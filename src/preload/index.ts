@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
 import type { AppSettings } from '../main/settings'
 import type { AppState } from '../main/state'
+import type { MobileServerInfo } from '../main/mobile-types'
 
 // Custom APIs for renderer
 const api = {
@@ -32,6 +33,14 @@ const api = {
   // Update shortcuts
   updateShortcuts: (shortcuts: { action: string; key: string }[]) =>
     ipcRenderer.invoke('updateShortcuts', shortcuts),
+
+  // Listen for prompt scene switch shortcut
+  onSwitchPromptScene: (callback: () => void) => {
+    ipcRenderer.on('switch-prompt-scene', callback)
+  },
+  removeSwitchPromptSceneListener: () => {
+    ipcRenderer.removeAllListeners('switch-prompt-scene')
+  },
 
   // Listen for screenshot events
   onScreenshotTaken: (callback: (screenshotData: string) => void) => {
@@ -174,6 +183,15 @@ const api = {
   },
   removeTranscriptionClearedListener: () => {
     ipcRenderer.removeAllListeners('transcription-cleared')
+  },
+
+  // Mobile display (LAN phone mode)
+  getMobileServerInfo: () => ipcRenderer.invoke('getMobileServerInfo') as Promise<MobileServerInfo>,
+  onMobileServerStatus: (callback: (info: MobileServerInfo) => void) => {
+    ipcRenderer.on('mobile-server-status', (_event, info) => callback(info))
+  },
+  removeMobileServerStatusListener: () => {
+    ipcRenderer.removeAllListeners('mobile-server-status')
   }
 }
 

@@ -8,6 +8,7 @@ import { getSolutionStream, getFollowUpStream, getGeneralStream } from './ai'
 import { state } from './state'
 import { settings } from './settings'
 import { getTranscriptionText, clearTranscriptionText } from './transcription'
+import { emitSolutionEvent, setMobileController, type MobileSolutionEvent } from './mobile-server'
 
 /**
  * Extract meaningful error message from API errors
@@ -216,6 +217,18 @@ function abortCurrentStream(reason: AbortReason) {
   currentStreamContext.controller.abort()
 }
 
+/**
+ * Fan out a solution lifecycle event to the desktop overlay and any phone
+ * connected to the LAN mobile server, keeping both displays in sync.
+ */
+function emitToClients(channel: MobileSolutionEvent, ...args: unknown[]) {
+  const mainWindow = global.mainWindow
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send(channel, ...args)
+  }
+  emitSolutionEvent(channel, args[0])
+}
+
 const callbacks: Record<string, () => void> = {
   hideOrShowMainWindow: async () => {
     const mainWindow = global.mainWindow
@@ -284,10 +297,10 @@ const callbacks: Record<string, () => void> = {
       currentStreamContext = streamContext
       recentScreenshots = [screenshotData]
       hasAppendSeparator = false
-      mainWindow.webContents.send('solution-clear')
-      mainWindow.webContents.send('screenshots-updated', recentScreenshots)
-      mainWindow.webContents.send('screenshot-taken', screenshotData)
-      mainWindow.webContents.send('ai-loading-start')
+      emitToClients('solution-clear')
+      emitToClients('screenshots-updated', recentScreenshots)
+      emitToClients('screenshot-taken', screenshotData)
+      emitToClients('ai-loading-start')
       loadingStarted = true
       let endedNaturally = true
       let streamStarted = false
@@ -305,13 +318,13 @@ const callbacks: Record<string, () => void> = {
               break
             }
             assistantResponse += chunk
-            mainWindow.webContents.send('solution-chunk', chunk)
+            emitToClients('solution-chunk', chunk)
           }
         } catch (error) {
           if (!streamContext.controller.signal.aborted) {
             endedNaturally = false
             console.error('Error streaming solution:', error)
-            mainWindow.webContents.send('solution-error', extractErrorMessage(error))
+            emitToClients('solution-error', extractErrorMessage(error))
           } else {
             endedNaturally = false
           }
@@ -319,7 +332,7 @@ const callbacks: Record<string, () => void> = {
 
         if (streamContext.controller.signal.aborted) {
           if (streamContext.reason === 'user') {
-            mainWindow.webContents.send('solution-stopped')
+            emitToClients('solution-stopped')
           }
         } else if (endedNaturally) {
           // Add assistant response to conversation history
@@ -329,27 +342,27 @@ const callbacks: Record<string, () => void> = {
               content: assistantResponse
             })
           }
-          mainWindow.webContents.send('solution-complete')
+          emitToClients('solution-complete')
         }
       } catch (error) {
         if (streamContext.controller.signal.aborted) {
           if (streamContext.reason === 'user') {
-            mainWindow.webContents.send('solution-stopped')
+            emitToClients('solution-stopped')
           }
         } else {
           endedNaturally = false
           console.error('Error streaming solution:', error)
-          mainWindow.webContents.send('solution-error', extractErrorMessage(error))
+          emitToClients('solution-error', extractErrorMessage(error))
         }
       } finally {
         if (currentStreamContext === streamContext) {
           currentStreamContext = null
         }
         if (!streamStarted && streamContext.reason === 'user') {
-          mainWindow.webContents.send('solution-stopped')
+          emitToClients('solution-stopped')
         }
         if (loadingStarted && mainWindow && !mainWindow.isDestroyed()) {
-          mainWindow.webContents.send('ai-loading-end')
+          emitToClients('ai-loading-end')
         }
       }
     }
@@ -403,15 +416,15 @@ const callbacks: Record<string, () => void> = {
 
       recentScreenshots.push(screenshotData)
       recentScreenshots = recentScreenshots.slice(-5) // 限5张
-      mainWindow.webContents.send('screenshot-taken', screenshotData)
-      mainWindow.webContents.send('screenshots-updated', recentScreenshots)
+      emitToClients('screenshot-taken', screenshotData)
+      emitToClients('screenshots-updated', recentScreenshots)
       if (!hasAppendSeparator) {
-        mainWindow.webContents.send('solution-chunk', '\n\n---\n\n')
+        emitToClients('solution-chunk', '\n\n---\n\n')
         hasAppendSeparator = true
       } else {
-        mainWindow.webContents.send('solution-chunk', '\n\n')
+        emitToClients('solution-chunk', '\n\n')
       }
-      mainWindow.webContents.send('ai-loading-start')
+      emitToClients('ai-loading-start')
       loadingStarted = true
 
       let endedNaturally = true
@@ -430,13 +443,13 @@ const callbacks: Record<string, () => void> = {
               break
             }
             assistantResponse += chunk
-            mainWindow.webContents.send('solution-chunk', chunk)
+            emitToClients('solution-chunk', chunk)
           }
         } catch (error) {
           if (!streamContext.controller.signal.aborted) {
             endedNaturally = false
             console.error('Error streaming continuous solution:', error)
-            mainWindow.webContents.send('solution-error', extractErrorMessage(error))
+            emitToClients('solution-error', extractErrorMessage(error))
           } else {
             endedNaturally = false
           }
@@ -444,7 +457,7 @@ const callbacks: Record<string, () => void> = {
 
         if (streamContext.controller.signal.aborted) {
           if (streamContext.reason === 'user') {
-            mainWindow.webContents.send('solution-stopped')
+            emitToClients('solution-stopped')
           }
         } else if (endedNaturally) {
           // Add assistant response to conversation history
@@ -454,27 +467,27 @@ const callbacks: Record<string, () => void> = {
               content: assistantResponse
             })
           }
-          mainWindow.webContents.send('solution-complete')
+          emitToClients('solution-complete')
         }
       } catch (error) {
         if (streamContext.controller.signal.aborted) {
           if (streamContext.reason === 'user') {
-            mainWindow.webContents.send('solution-stopped')
+            emitToClients('solution-stopped')
           }
         } else {
           endedNaturally = false
           console.error('Error streaming continuous solution:', error)
-          mainWindow.webContents.send('solution-error', extractErrorMessage(error))
+          emitToClients('solution-error', extractErrorMessage(error))
         }
       } finally {
         if (currentStreamContext === streamContext) {
           currentStreamContext = null
         }
         if (!streamStarted && streamContext.reason === 'user') {
-          mainWindow.webContents.send('solution-stopped')
+          emitToClients('solution-stopped')
         }
         if (loadingStarted && mainWindow && !mainWindow.isDestroyed()) {
-          mainWindow.webContents.send('ai-loading-end')
+          emitToClients('ai-loading-end')
         }
       }
     }
@@ -543,6 +556,14 @@ const callbacks: Record<string, () => void> = {
     if (!mainWindow || mainWindow.isDestroyed() || !state.inCoderPage) return
     clearTranscriptionText()
     mainWindow.webContents.send('transcription-cleared')
+  },
+
+  // Notify the renderer to cycle to the next prompt scene; scene data lives
+  // in the renderer's settings store, so the actual switch happens there.
+  switchPromptScene: () => {
+    const mainWindow = global.mainWindow
+    if (!mainWindow || mainWindow.isDestroyed()) return
+    mainWindow.webContents.send('switch-prompt-scene')
   }
 }
 
@@ -628,7 +649,10 @@ ipcMain.handle('stopSolutionStream', () => {
   return true
 })
 
-ipcMain.handle('sendFollowUpQuestion', async (_event, question: string) => {
+// Shared by the desktop IPC handler and the mobile (phone) follow-up command
+async function handleFollowUpQuestion(
+  question: string
+): Promise<{ success: boolean; error?: string }> {
   const mainWindow = global.mainWindow
   if (!mainWindow || mainWindow.isDestroyed() || !state.inCoderPage || !settings.apiKey) {
     return { success: false, error: 'Invalid state' }
@@ -647,7 +671,7 @@ ipcMain.handle('sendFollowUpQuestion', async (_event, question: string) => {
   currentStreamContext = streamContext
 
   // Add a separator before the follow-up response
-  mainWindow.webContents.send('solution-chunk', '\n\n---\n\n')
+  emitToClients('solution-chunk', '\n\n---\n\n')
 
   let endedNaturally = true
   let streamStarted = false
@@ -668,13 +692,13 @@ ipcMain.handle('sendFollowUpQuestion', async (_event, question: string) => {
           break
         }
         assistantResponse += chunk
-        mainWindow.webContents.send('solution-chunk', chunk)
+        emitToClients('solution-chunk', chunk)
       }
     } catch (error) {
       if (!streamContext.controller.signal.aborted) {
         endedNaturally = false
         console.error('Error streaming follow-up solution:', error)
-        mainWindow.webContents.send('solution-error', extractErrorMessage(error))
+        emitToClients('solution-error', extractErrorMessage(error))
       } else {
         endedNaturally = false
       }
@@ -682,7 +706,7 @@ ipcMain.handle('sendFollowUpQuestion', async (_event, question: string) => {
 
     if (streamContext.controller.signal.aborted) {
       if (streamContext.reason === 'user') {
-        mainWindow.webContents.send('solution-stopped')
+        emitToClients('solution-stopped')
       }
     } else if (endedNaturally) {
       // Update conversation history with user question and assistant response
@@ -701,26 +725,61 @@ ipcMain.handle('sendFollowUpQuestion', async (_event, question: string) => {
           content: assistantResponse
         })
       }
-      mainWindow.webContents.send('solution-complete')
+      emitToClients('solution-complete')
     }
   } catch (error) {
     if (streamContext.controller.signal.aborted) {
       if (streamContext.reason === 'user') {
-        mainWindow.webContents.send('solution-stopped')
+        emitToClients('solution-stopped')
       }
     } else {
       endedNaturally = false
       console.error('Error streaming follow-up solution:', error)
-      mainWindow.webContents.send('solution-error', extractErrorMessage(error))
+      emitToClients('solution-error', extractErrorMessage(error))
     }
   } finally {
     if (currentStreamContext === streamContext) {
       currentStreamContext = null
     }
     if (!streamStarted && streamContext.reason === 'user') {
-      mainWindow.webContents.send('solution-stopped')
+      emitToClients('solution-stopped')
     }
   }
 
   return { success: true }
+}
+
+ipcMain.handle('sendFollowUpQuestion', (_event, question: string) =>
+  handleFollowUpQuestion(question)
+)
+
+// Mobile display mode hooks: window control and stream control reuse the
+// same logic as the desktop shortcut callbacks and IPC handlers.
+setMobileController({
+  hideMainWindow: () => {
+    const mainWindow = global.mainWindow
+    if (!mainWindow || mainWindow.isDestroyed() || !mainWindow.isVisible()) return
+    if (process.platform === 'win32') {
+      softHideWindow(mainWindow)
+    } else {
+      stopBackgroundGuard()
+      mainWindow.hide()
+    }
+  },
+  showMainWindow: () => {
+    const mainWindow = global.mainWindow
+    if (!mainWindow || mainWindow.isDestroyed()) return
+    if (process.platform === 'win32' && isWindowSoftHidden) {
+      restoreSoftHiddenWindow(mainWindow)
+    } else if (!mainWindow.isVisible()) {
+      showMainWindow(mainWindow)
+    }
+  },
+  stopStream: () => {
+    abortCurrentStream('user')
+  },
+  toggleMainWindow: () => callbacks.hideOrShowMainWindow(),
+  sendFollowUp: (question) => handleFollowUpQuestion(question),
+  takeScreenshot: () => callbacks.takeScreenshot(),
+  appendScreenshot: () => callbacks.appendScreenshot()
 })

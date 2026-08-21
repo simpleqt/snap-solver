@@ -1,5 +1,5 @@
 {
-  "name": "interview-coder-cn",
+  "name": "snap-solver",
   "version": "1.8.0",
   "description": "截屏解题助手，实时截屏并生成解题思路和答案",
   "main": "./out/main/index.js",
@@ -20,7 +20,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ooboqoo/interview-coder-cn.git"
+    "url": "git+https://github.com/simpleqt/snap-solver.git"
   },
   "keywords": [
     "解题助手",
@@ -33,9 +33,9 @@
   "author": "Gavin Wang<ooboqoo@gmail.com>",
   "license": "CC BY-NC 4.0",
   "bugs": {
-    "url": "https://github.com/ooboqoo/interview-coder-cn/issues"
+    "url": "https://github.com/simpleqt/snap-solver/issues"
   },
-  "homepage": "https://github.com/ooboqoo/interview-coder-cn#readme",
+  "homepage": "https://github.com/simpleqt/snap-solver#readme",
   "dependencies": {
     "@ai-sdk/openai": "^2.0.16",
     "@electron-toolkit/preload": "^3.0.2",
@@ -53,13 +53,17 @@
     "cmdk": "^1.1.1",
     "dotenv": "^17.2.1",
     "electron-updater": "^6.3.9",
+    "katex": "^0.18.1",
     "lucide-react": "^0.540.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-markdown": "^10.1.0",
+    "react-qr-code": "^2.2.0",
     "react-router": "^7.8.1",
     "rehype-highlight": "^7.0.2",
+    "rehype-katex": "^7.0.1",
     "remark-gfm": "^4.0.1",
+    "remark-math": "^6.0.0",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.3.1",
     "tw-animate-css": "^1.3.7",

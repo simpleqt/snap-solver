@@ -13,8 +13,11 @@ import {
   Mic,
   Plus,
   RotateCcw,
+  Smartphone,
   X
 } from 'lucide-react'
+import QRCode from 'react-qr-code'
+import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Slider } from '@/components/ui/slider'
 import { Textarea } from '@/components/ui/textarea'
@@ -41,6 +44,16 @@ import {
   SelectValue
 } from '@/components/ui/select'
 
+/** Derived from the preload API so renderer stays in sync with main automatically */
+type MobileServerInfo = Awaited<ReturnType<typeof window.api.getMobileServerInfo>>
+
+const MOBILE_TOKEN_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789'
+
+function generatePairingToken(): string {
+  const values = crypto.getRandomValues(new Uint32Array(8))
+  return Array.from(values, (n) => MOBILE_TOKEN_CHARS[n % MOBILE_TOKEN_CHARS.length]).join('')
+}
+
 export default function SettingsPage() {
   const {
     opacity,
@@ -55,6 +68,9 @@ export default function SettingsPage() {
     audioInputDeviceId,
     audioOutputDeviceId,
     hideDockIcon,
+    mobileDisplayEnabled,
+    mobileServerPort,
+    mobilePairingToken,
     updateSetting,
     setActiveScene,
     updateScenePrompt,
@@ -68,9 +84,25 @@ export default function SettingsPage() {
   const [sceneToDelete, setSceneToDelete] = useState<string | null>(null)
 
   const [audioDevices, setAudioDevices] = useState<MediaDeviceInfo[]>([])
+  const [mobileInfo, setMobileInfo] = useState<MobileServerInfo | null>(null)
 
   const activeScene = scenes.find((s) => s.id === activeSceneId)
   const deletingScene = scenes.find((s) => s.id === sceneToDelete)
+
+  useEffect(() => {
+    const loadMobileInfo = async () => {
+      try {
+        setMobileInfo(await window.api.getMobileServerInfo())
+      } catch (err) {
+        console.error('Failed to get mobile server info:', err)
+      }
+    }
+    loadMobileInfo()
+    window.api.onMobileServerStatus(setMobileInfo)
+    return () => {
+      window.api.removeMobileServerStatusListener()
+    }
+  }, [])
 
   useEffect(() => {
     return () => {
@@ -106,6 +138,28 @@ export default function SettingsPage() {
   const handleResetScenePrompt = () => {
     if (!activeScene?.isPreset) return
     updateScenePrompt(activeScene.id, PRESET_SCENE_PROMPTS[activeScene.id] ?? '')
+  }
+
+  const handleToggleMobile = (checked: boolean) => {
+    if (checked && !mobilePairingToken) {
+      updateSetting('mobilePairingToken', generatePairingToken())
+    }
+    updateSetting('mobileDisplayEnabled', checked)
+    if (checked) {
+      toast.info('已开启手机显示：扫码连接手机后，返回主界面时电脑窗口将自动隐藏')
+    }
+  }
+
+  const handleRegenToken = () => {
+    updateSetting('mobilePairingToken', generatePairingToken())
+    toast.success('已重新生成配对码，旧链接已失效')
+  }
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard
+      .writeText(text)
+      .then(() => toast.success('已复制到剪贴板'))
+      .catch(() => toast.error('复制失败'))
   }
 
   return (
@@ -450,6 +504,114 @@ export default function SettingsPage() {
           </div>
         </div>
 
+        {/* Mobile Display Settings */}
+        <div className="bg-gray-300/80 rounded-lg p-6">
+          <h2 className="text-lg font-semibold mb-4 flex items-center">
+            <Smartphone className="h-5 w-5 mr-2" />
+            手机显示
+          </h2>
+
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium">
+                启用手机显示模式
+                <span className="ml-2 text-xs font-light">
+                  开启后电脑窗口自动隐藏，答案实时推送到手机浏览器查看
+                </span>
+              </label>
+              <Switch
+                className="scale-y-90"
+                checked={mobileDisplayEnabled}
+                onCheckedChange={handleToggleMobile}
+              />
+            </div>
+
+            {mobileDisplayEnabled && (
+              <>
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium">
+                    服务端口
+                    <span className="ml-2 text-xs font-light">修改后会自动重启服务</span>
+                  </label>
+                  <input
+                    type="number"
+                    min={1024}
+                    max={65535}
+                    value={mobileServerPort}
+                    onChange={(e) => {
+                      const port = Number(e.target.value)
+                      if (Number.isInteger(port) && port >= 1024 && port <= 65535) {
+                        updateSetting('mobileServerPort', port)
+                      }
+                    }}
+                    className="w-60 px-3 py-2 border border-gray-300 rounded-md bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium">
+                    配对码
+                    <span className="ml-2 text-xs font-light">手机需通过含配对码的链接访问</span>
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-sm bg-white px-2.5 py-1.5 rounded-md border border-gray-300">
+                      {mobilePairingToken || '未生成'}
+                    </span>
+                    <Button variant="outline" size="sm" onClick={handleRegenToken}>
+                      重新生成
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="text-sm">
+                  {mobileInfo?.running ? (
+                    <span className="text-green-700">
+                      服务运行中 · 已连接 {mobileInfo.clientCount} 台设备
+                    </span>
+                  ) : (
+                    <span className="text-gray-600">
+                      {mobileInfo?.error ? '服务启动失败' : '服务未启动'}
+                    </span>
+                  )}
+                  {mobileInfo?.error && (
+                    <span className="block text-red-600 text-xs mt-1">{mobileInfo.error}</span>
+                  )}
+                </div>
+
+                {mobileInfo?.running && mobileInfo.urls.length > 0 && (
+                  <div className="flex items-start gap-4 pt-2">
+                    <div className="bg-white p-2 rounded-lg border border-gray-300 flex-none">
+                      <QRCode
+                        size={110}
+                        value={`${mobileInfo.urls[0]}/?token=${encodeURIComponent(
+                          mobilePairingToken
+                        )}`}
+                      />
+                    </div>
+                    <div className="text-xs space-y-1.5 min-w-0">
+                      <div>手机与电脑连接同一 Wi-Fi，扫码或输入地址访问：</div>
+                      {mobileInfo.urls.map((url) => (
+                        <div
+                          key={url}
+                          className="font-mono break-all cursor-pointer hover:text-blue-700 transition-colors"
+                          title="点击复制完整链接"
+                          onClick={() =>
+                            copyToClipboard(
+                              `${url}/?token=${encodeURIComponent(mobilePairingToken)}`
+                            )
+                          }
+                        >
+                          {url}/?token={mobilePairingToken}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+
         {/* Shortcuts Settings */}
         <div className="bg-gray-300/80 rounded-lg p-6">
           <h2 className="text-lg font-semibold mb-4 flex items-center">
@@ -500,7 +662,7 @@ export default function SettingsPage() {
                     if (dir) updateSetting('screenshotDir', dir)
                   }}
                 >
-                  {screenshotDir || '默认: 图片/InterviewCoder'}
+                  {screenshotDir || '默认: 图片/SnapSolver'}
                 </button>
               </div>
             )}

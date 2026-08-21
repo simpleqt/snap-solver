@@ -29,9 +29,11 @@ process.on('uncaughtException', (error) => {
 import { electronApp, optimizer } from '@electron-toolkit/utils'
 import './shortcuts'
 import './transcription'
+import './mobile-server'
 import { createWindow } from './main-window'
 import { initAutoUpdater } from './auto-updater'
 import { applyDockVisibility } from './settings'
+import { stopMobileServer } from './mobile-server'
 
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
@@ -97,4 +99,9 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit()
   }
+})
+
+app.on('before-quit', () => {
+  // Shut down the LAN mobile server; never restore the desktop window on quit
+  stopMobileServer({ showWindow: false })
 })

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { HashRouter, Routes, Route } from 'react-router'
+import { toast } from 'sonner'
 import { Toaster } from 'sonner'
 import CoderPage from '@/coder'
 import SettingsPage from '@/settings'
@@ -45,6 +46,20 @@ export default function App() {
       console.log('Shortcuts registered:', shortcutsStatus) // DEBUG: 主进程状态
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Cycle to the next prompt scene when the global shortcut is pressed
+  useEffect(() => {
+    const handleSwitch = () => {
+      useSettingsStore.getState().cycleActiveScene()
+      const { scenes, activeSceneId } = useSettingsStore.getState()
+      const scene = scenes.find((s) => s.id === activeSceneId)
+      if (scene) {
+        toast.info(`已切换到提示词场景：${scene.name}`)
+      }
+    }
+    window.api.onSwitchPromptScene(handleSwitch)
+    return () => window.api.removeSwitchPromptSceneListener()
   }, [])
 
   return (

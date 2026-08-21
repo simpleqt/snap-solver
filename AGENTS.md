@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-**Interview Coder CN** (截屏解题助手) is a desktop application that captures screenshots of on-screen problems (coding challenges, exam questions, or anything else) and uses AI (vision models) to generate solutions in real-time. The window is invisible to screen-sharing software, making it suitable for use during coding interviews and online assessments.
+**Snap Solver** (截屏解题助手) is a desktop application that captures screenshots of on-screen problems (coding challenges, exam questions, or anything else) and uses AI (vision models) to generate solutions in real-time. The window is invisible to screen-sharing software, making it suitable for use during coding interviews and online assessments.
 
 Key capabilities:
 - Global shortcuts trigger screenshot capture → AI analysis → streamed solution display
@@ -35,8 +35,10 @@ src/
 │   ├── main-window.ts       # BrowserWindow creation (frameless, transparent, always-on-top)
 │   ├── shortcuts.ts         # Global shortcuts registration + AI streaming orchestration (largest file)
 │   ├── ai.ts                # Vercel AI SDK integration, 3 streaming functions
-│   ├── settings.ts          # App settings object + IPC handlers
-│   ├── state.ts             # App state object + IPC handlers
+│   ├── settings.ts          # App settings object + IPC handlers + change hooks
+│   ├── state.ts             # App state object + IPC handlers + change hooks
+│   ├── mobile-server.ts     # LAN mobile display: HTTP + WebSocket server (phone mode)
+│   ├── mobile-types.ts      # Shared mobile types (import-free, web-program safe)
 │   ├── take-screenshot.ts   # desktopCapturer → base64 PNG
 │   ├── transcription.ts     # DashScope WebSocket real-time speech-to-text
 │   ├── auto-updater.ts      # electron-updater (non-macOS only)
@@ -123,11 +125,23 @@ src/
 
 1. User presses global shortcut (e.g., `Alt+Enter` on macOS)
 2. `shortcuts.ts` callback triggers `takeScreenshot()` → `desktopCapturer` → base64 PNG
-3. Main sends `screenshot-taken` and `ai-loading-start` to renderer
+3. Main sends `screenshot-taken` and `ai-loading-start` to renderer (and broadcasts to phones, see Mobile Display Mode)
 4. Main calls `getSolutionStream(base64Image)` → Vercel AI SDK `streamText()`
-5. Stream chunks sent to renderer via `solution-chunk` IPC events
+5. Stream chunks sent to renderer via `solution-chunk` IPC events (fanned out through `emitToClients()`)
 6. Renderer accumulates chunks in `useSolutionStore` and renders via `MarkdownRenderer`
 7. On completion: `solution-complete`; on error: `solution-error`; on abort: `solution-stopped`
+
+### Mobile Display Mode (LAN phone display)
+
+Optional mode that mirrors the solution stream to a phone browser over the LAN:
+
+- `src/main/mobile-server.ts` runs an HTTP server (default port 3170) serving a self-contained phone page (`resources/mobile/index.html`, markdown via vendored `marked.min.js`) plus a `ws` WebSocket endpoint
+- `shortcuts.ts` fans out all solution lifecycle events through `emitToClients()`, which sends to the desktop renderer AND `emitSolutionEvent()` (which updates a session snapshot and broadcasts to phones); clients connecting mid-stream receive the snapshot via an `init` message
+- WebSocket upgrade requires a pairing token (`?token=`); settings shows a QR code (react-qr-code) and LAN URLs
+- Phone → main commands: `stop-stream`, `follow-up` (reuses `handleFollowUpQuestion`), `show-window`, `ping`
+- When enabled, the desktop window auto-hides on entering the coder page (`registerAppStateHook`); the phone's「显示电脑窗口」button and the hide/show shortcut restore it
+- `src/main/mobile-types.ts` holds shared types; it and `settings.ts`/`state.ts` are imported by preload and therefore must stay free of node-only imports (`?asset`, `ws`) — use the `registerSettingsChangeHook` / `registerAppStateHook` registration pattern instead
+- Window control / stream control hooks are registered from `shortcuts.ts` via `setMobileController()` to avoid circular imports
 
 ### IPC Channels
 
@@ -139,6 +153,7 @@ src/
 - `sendFollowUpQuestion` — follow-up within conversation
 - `start-transcription` / `stop-transcription` — speech transcription lifecycle
 - `get-transcription-text` / `clear-transcription-text` — read/clear accumulated text
+- `getMobileServerInfo` — mobile server status, URLs, token, client count
 
 **Main → Renderer (send):**
 - `sync-app-state` — push state changes (e.g., mouse ignore toggle)
@@ -148,12 +163,13 @@ src/
 - `scroll-page-up` / `scroll-page-down` — keyboard-driven scroll
 - `toggle-transcription` — trigger start/stop transcription from shortcut
 - `transcription-text` / `transcription-error` / `transcription-stopped` / `transcription-cleared` — transcription events
+- `mobile-server-status` — mobile server start/stop/error/client-count updates
 
 ### Zustand Stores
 
 | Store | File | Persisted | Key State |
 |-------|------|-----------|-----------|
-| `useSettingsStore` | `lib/store/settings.ts` | Yes (v6) | `apiBaseURL`, `apiKey`, `model`, `customModels`, `scenes` (prompt scenes), `activeSceneId`, `customPrompt` (derived from active scene), `opacity`, `dashscopeApiKey` |
+| `useSettingsStore` | `lib/store/settings.ts` | Yes (v6) | `apiBaseURL`, `apiKey`, `model`, `customModels`, `scenes` (prompt scenes), `activeSceneId`, `customPrompt` (derived from active scene), `opacity`, `dashscopeApiKey`, `mobileDisplayEnabled`, `mobileServerPort`, `mobilePairingToken` |
 | `useShortcutsStore` | `lib/store/shortcuts.ts` | Yes (v5) | `shortcuts` (action → key mapping with categories) |
 | `useSolutionStore` | `lib/store/solution.ts` | No | `isLoading`, `solutionChunks`, `screenshotData`, `errorMessage` |
 | `useTranscriptionStore` | `lib/store/transcription.ts` | No | `isTranscribing`, `transcriptionText`, `errorMessage` |

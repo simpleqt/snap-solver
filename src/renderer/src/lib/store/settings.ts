@@ -3,6 +3,8 @@ import { persist } from 'zustand/middleware'
 import codingPrompt from './prompts/coding.md?raw'
 import englishExamPrompt from './prompts/english-exam.md?raw'
 import generalQaPrompt from './prompts/general-qa.md?raw'
+import personalityTestPrompt from './prompts/personality-test.md?raw'
+import reasoningTestPrompt from './prompts/reasoning-test.md?raw'
 
 export interface PromptScene {
   id: string
@@ -17,7 +19,9 @@ export const CODING_SCENE_ID = 'coding'
 export const PRESET_SCENE_PROMPTS: Record<string, string> = {
   [CODING_SCENE_ID]: codingPrompt,
   'english-exam': englishExamPrompt,
-  'general-qa': generalQaPrompt
+  'general-qa': generalQaPrompt,
+  'personality-test': personalityTestPrompt,
+  'reasoning-test': reasoningTestPrompt
 }
 
 const createPresetScenes = (): PromptScene[] => [
@@ -37,6 +41,18 @@ const createPresetScenes = (): PromptScene[] => [
     id: 'general-qa',
     name: '通用问答',
     prompt: PRESET_SCENE_PROMPTS['general-qa'],
+    isPreset: true
+  },
+  {
+    id: 'personality-test',
+    name: '性格测评',
+    prompt: PRESET_SCENE_PROMPTS['personality-test'],
+    isPreset: true
+  },
+  {
+    id: 'reasoning-test',
+    name: '逻辑/数字题',
+    prompt: PRESET_SCENE_PROMPTS['reasoning-test'],
     isPreset: true
   }
 ]
@@ -71,12 +87,18 @@ interface Settings {
 
   audioInputDeviceId: string
   audioOutputDeviceId: string
+
+  /** LAN mobile display mode: stream solutions to a phone browser */
+  mobileDisplayEnabled: boolean
+  mobileServerPort: number
+  mobilePairingToken: string
 }
 
 interface SettingsStore extends Settings {
   updateSetting: <K extends keyof Settings>(key: K, value: Settings[K]) => void
   syncSettings: (settings: Partial<Settings>) => void
   setActiveScene: (id: string) => void
+  cycleActiveScene: () => void
   updateScenePrompt: (id: string, prompt: string) => void
   addScene: (name: string) => string
   removeScene: (id: string) => void
@@ -98,10 +120,14 @@ const defaultSettings: Settings = {
 
   dashscopeApiKey: '',
 
-  hideDockIcon: false,
+  hideDockIcon: true,
 
   audioInputDeviceId: '',
-  audioOutputDeviceId: ''
+  audioOutputDeviceId: '',
+
+  mobileDisplayEnabled: false,
+  mobileServerPort: 3170,
+  mobilePairingToken: ''
 }
 
 export const useSettingsStore = create<SettingsStore>()(
@@ -119,6 +145,18 @@ export const useSettingsStore = create<SettingsStore>()(
           activeSceneId: id,
           customPrompt: composeCustomPrompt(state.scenes, id)
         }))
+      },
+      cycleActiveScene: () => {
+        set((state) => {
+          const scenes = state.scenes
+          if (scenes.length === 0) return state
+          const currentIndex = scenes.findIndex((s) => s.id === state.activeSceneId)
+          const nextScene = scenes[(currentIndex + 1) % scenes.length]
+          return {
+            activeSceneId: nextScene.id,
+            customPrompt: composeCustomPrompt(scenes, nextScene.id)
+          }
+        })
       },
       updateScenePrompt: (id, prompt) => {
         set((state) => {
@@ -157,11 +195,17 @@ export const useSettingsStore = create<SettingsStore>()(
     }),
     {
       name: 'interview-coder-settings',
-      version: 7,
+      version: 8,
       migrate: (persisted, version) => {
         const state = persisted as Partial<Settings>
         // Drop the legacy codeLanguage field (language now lives in the prompt text)
         delete (state as Record<string, unknown>).codeLanguage
+        if (version < 8) {
+          // Refresh the coding scene prompt with the new template for existing users
+          state.scenes = (state.scenes ?? []).map((s) =>
+            s.id === CODING_SCENE_ID ? { ...s, prompt: PRESET_SCENE_PROMPTS[CODING_SCENE_ID] } : s
+          )
+        }
         if (version < 5) {
           // Convert the legacy free-form customPrompt into a custom scene
           const scenes = createPresetScenes()

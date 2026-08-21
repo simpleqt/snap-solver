@@ -4,7 +4,7 @@ import { join } from 'node:path'
 import { settings } from './settings'
 
 function getSaveDir(): string {
-  return settings.screenshotDir || join(app.getPath('pictures'), 'InterviewCoder')
+  return settings.screenshotDir || join(app.getPath('pictures'), 'SnapSolver')
 }
 
 function generateFilename(): string {

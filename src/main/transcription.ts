@@ -5,6 +5,7 @@ import { randomUUID } from 'node:crypto'
 const WS_URL = 'wss://dashscope.aliyuncs.com/api-ws/v1/inference/'
 
 let ws: WebSocket | null = null
+let wsConnectTimer: NodeJS.Timeout | null = null
 let taskId: string | null = null
 let isTranscribing = false
 let taskStarted = false
@@ -19,12 +20,26 @@ function sendToRenderer(channel: string, ...args: unknown[]) {
 }
 
 function cleanup() {
+  if (wsConnectTimer) {
+    clearTimeout(wsConnectTimer)
+    wsConnectTimer = null
+  }
   if (ws) {
-    ws.removeAllListeners()
-    if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) {
-      ws.close()
-    }
+    const sock = ws
     ws = null
+    // Keep a no-op 'error' listener attached until after close(): closing a
+    // still-CONNECTING socket emits 'error', and an unhandled 'error' event
+    // on an EventEmitter throws — which previously swallowed the real reason
+    // the connection failed (user saw no transcription and no error).
+    sock.on('error', () => {})
+    try {
+      if (sock.readyState === WebSocket.OPEN || sock.readyState === WebSocket.CONNECTING) {
+        sock.close()
+      }
+    } catch (e) {
+      console.error('Error closing transcription websocket:', e)
+    }
+    sock.removeAllListeners()
   }
   taskId = null
   isTranscribing = false
@@ -42,7 +57,26 @@ function startTranscription(apiKey: string) {
     headers: { Authorization: `bearer ${apiKey}` }
   })
 
+  // Surface connection failures instead of silently waiting forever.
+  // WS handshake normally completes in <1s; if it is still CONNECTING
+  // after 10s the network / API key is likely the problem.
+  wsConnectTimer = setTimeout(() => {
+    if (ws && ws.readyState === WebSocket.CONNECTING) {
+      console.error('Transcription WebSocket connection timed out')
+      sendToRenderer(
+        'transcription-error',
+        '连接百炼语音服务超时，请检查网络或 API Key 是否正确'
+      )
+      cleanup()
+      sendToRenderer('transcription-stopped')
+    }
+  }, 10000)
+
   ws.on('open', () => {
+    if (wsConnectTimer) {
+      clearTimeout(wsConnectTimer)
+      wsConnectTimer = null
+    }
     const runTask = {
       header: {
         action: 'run-task',

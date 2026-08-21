@@ -1,0 +1,842 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0f172a" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>截屏解题助手</title>
+  <script src="./marked.min.js"></script>
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      height: 100dvh;
+      background: #0f172a;
+      color: #e2e8f0;
+      font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Segoe UI', Roboto, sans-serif;
+      line-height: 1.65;
+    }
+    [hidden] { display: none !important; }
+
+    /* ---- Top bar ---- */
+    #topbar {
+      flex: none;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: calc(0.5rem + env(safe-area-inset-top)) 0.75rem 0.5rem;
+      background: #1e293b;
+      border-bottom: 1px solid #334155;
+      font-size: 0.8rem;
+    }
+    #topbar .title { font-weight: 600; }
+    #topbar .spacer { flex: 1; }
+    .dot { width: 0.55rem; height: 0.55rem; border-radius: 50%; background: #64748b; flex: none; }
+    .dot.ok { background: #22c55e; }
+    .dot.bad { background: #ef4444; }
+    .icon-btn {
+      background: #334155;
+      color: #e2e8f0;
+      border: none;
+      border-radius: 0.5rem;
+      padding: 0.35rem 0.6rem;
+      font-size: 0.75rem;
+    }
+    .icon-btn:active { background: #475569; }
+
+    /* ---- Content ---- */
+    #content {
+      flex: 1;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      padding: 0.9rem 1rem 1.6rem;
+    }
+    .inner { max-width: 46rem; margin: 0 auto; }
+    .error {
+      background: #7f1d1d;
+      border: 1px solid #ef4444;
+      color: #fecaca;
+      border-radius: 0.6rem;
+      padding: 0.6rem 0.8rem;
+      margin-bottom: 0.8rem;
+      font-size: 0.9rem;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    #shots {
+      display: flex;
+      gap: 0.5rem;
+      overflow-x: auto;
+      margin-bottom: 0.8rem;
+      padding-bottom: 0.2rem;
+    }
+    #shots img {
+      height: 4.5rem;
+      border-radius: 0.4rem;
+      border: 1px solid #334155;
+      flex: none;
+    }
+    #placeholder {
+      color: #64748b;
+      text-align: center;
+      padding: 3rem 1rem;
+      font-size: 0.9rem;
+    }
+    #solution { word-break: break-word; }
+    #solution:empty { display: none; }
+    #solution h1, #solution h2, #solution h3, #solution h4 {
+      margin: 0.9em 0 0.4em;
+      line-height: 1.35;
+      color: #f1f5f9;
+    }
+    #solution h1 { font-size: 1.3rem; }
+    #solution h2 { font-size: 1.15rem; }
+    #solution h3 { font-size: 1.05rem; }
+    #solution h4 { font-size: 0.95rem; }
+    #solution p { margin: 0.5em 0; }
+    #solution ul, #solution ol { margin: 0.5em 0; padding-left: 1.3em; }
+    #solution li { margin: 0.25em 0; }
+    #solution a { color: #60a5fa; }
+    #solution hr { border: none; border-top: 1px solid #334155; margin: 1em 0; }
+    #solution blockquote {
+      border-left: 3px solid #475569;
+      margin: 0.6em 0;
+      padding: 0.2em 0.8em;
+      color: #94a3b8;
+    }
+    #solution img { max-width: 100%; }
+    #solution code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
+    }
+    #solution :not(pre) > code {
+      background: #1e293b;
+      padding: 0.1em 0.35em;
+      border-radius: 0.3rem;
+      font-size: 0.9em;
+      color: #7dd3fc;
+    }
+    #solution pre {
+      position: relative;
+      background: #020617;
+      border: 1px solid #1e293b;
+      border-radius: 0.6rem;
+      padding: 0.9rem;
+      margin: 0.7em 0;
+      overflow-x: auto;
+      font-size: 0.85em;
+      line-height: 1.5;
+    }
+    .copy-btn {
+      position: absolute;
+      top: 0.4rem;
+      right: 0.4rem;
+      background: #1e293b;
+      color: #94a3b8;
+      border: 1px solid #334155;
+      border-radius: 0.4rem;
+      padding: 0.2rem 0.5rem;
+      font-size: 0.7rem;
+    }
+    .copy-btn:active { background: #334155; }
+    #solution table {
+      border-collapse: collapse;
+      display: block;
+      overflow-x: auto;
+      margin: 0.7em 0;
+      font-size: 0.9em;
+    }
+    #solution th, #solution td {
+      border: 1px solid #334155;
+      padding: 0.35rem 0.6rem;
+    }
+    #solution th { background: #1e293b; }
+    #loading {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: #94a3b8;
+      padding: 0.6rem 0;
+      font-size: 0.85rem;
+    }
+    .spin {
+      width: 1rem;
+      height: 1rem;
+      border: 2px solid #475569;
+      border-top-color: #e2e8f0;
+      border-radius: 50%;
+      animation: rot 1s linear infinite;
+      flex: none;
+    }
+    @keyframes rot { to { transform: rotate(360deg); } }
+
+    /* ---- Bottom controls ---- */
+    #controls {
+      flex: none;
+      background: #1e293b;
+      border-top: 1px solid #334155;
+      padding: 0.6rem 0.75rem calc(0.6rem + env(safe-area-inset-bottom));
+    }
+    #controls .row { display: flex; gap: 0.5rem; margin-bottom: 0.5rem; }
+    #controls .btn-capture {
+      width: 100%;
+      margin-bottom: 0.5rem;
+      padding: 0.7rem 0.5rem;
+      font-size: 0.95rem;
+      font-weight: 600;
+    }
+    #controls .btn-thinking,
+    #controls .btn-scene {
+      width: 100%;
+      margin-bottom: 0.5rem;
+      padding: 0.5rem 0.5rem;
+      font-size: 0.82rem;
+      color: #94a3b8;
+    }
+    .thinking-on,
+    #pure-bar button.thinking-on {
+      background: rgba(37, 99, 235, 0.88) !important;
+      border-color: #2563eb !important;
+      color: #fff !important;
+    }
+    .btn {
+      flex: 1;
+      border: 1px solid #334155;
+      background: #0f172a;
+      color: #e2e8f0;
+      border-radius: 0.6rem;
+      padding: 0.55rem 0.5rem;
+      font-size: 0.85rem;
+    }
+    .btn:active { background: #334155; }
+    .btn-primary { background: #2563eb; border-color: #2563eb; color: #fff; }
+    .btn-primary:active { background: #1d4ed8; }
+    #ask-row { display: flex; gap: 0.5rem; }
+    #ask-input {
+      flex: 1;
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 0.6rem;
+      color: inherit;
+      padding: 0.55rem 0.75rem;
+      font-size: 0.95rem;
+      min-width: 0;
+    }
+    #ask-input:focus { outline: none; border-color: #2563eb; }
+    #btn-send { flex: none; padding: 0.55rem 1rem; }
+
+    /* ---- Pure display mode (fullscreen: answer only, nothing else) ---- */
+    body.pure #topbar,
+    body.pure #controls {
+      display: none;
+    }
+    body.pure #content {
+      padding-top: calc(1rem + env(safe-area-inset-top));
+    }
+    #exit-fullscreen {
+      position: fixed;
+      top: calc(0.6rem + env(safe-area-inset-top));
+      right: 0.6rem;
+      z-index: 30;
+      background: rgba(51, 65, 85, 0.75);
+      color: #cbd5e1;
+      border: 1px solid #475569;
+      border-radius: 2rem;
+      padding: 0.25rem 0.75rem;
+      font-size: 0.7rem;
+    }
+    #toast {
+      position: fixed;
+      top: calc(2.6rem + env(safe-area-inset-top));
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 50;
+      background: rgba(15, 23, 42, 0.92);
+      border: 1px solid #334155;
+      color: #e2e8f0;
+      border-radius: 2rem;
+      padding: 0.4rem 1rem;
+      font-size: 0.8rem;
+      white-space: nowrap;
+      max-width: 90vw;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      opacity: 0;
+      transition: opacity 0.25s;
+      pointer-events: none;
+    }
+    #toast.show {
+      opacity: 1;
+    }
+    /* Compact capture actions kept visible in pure mode */
+    #pure-bar {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: calc(0.5rem + env(safe-area-inset-bottom));
+      display: flex;
+      justify-content: center;
+      gap: 0.6rem;
+      z-index: 30;
+    }
+    #pure-bar button {
+      background: rgba(51, 65, 85, 0.82);
+      color: #e2e8f0;
+      border: 1px solid rgba(71, 85, 105, 0.9);
+      border-radius: 2rem;
+      padding: 0.35rem 0.95rem;
+      font-size: 0.78rem;
+    }
+    #pure-bar button:active {
+      background: rgba(71, 85, 105, 0.95);
+    }
+    body.pure #content {
+      padding-bottom: 3.6rem;
+    }
+    #shot-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(2, 6, 23, 0.92);
+      z-index: 40;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+    #shot-modal img {
+      max-width: 100%;
+      max-height: 100%;
+      border-radius: 0.5rem;
+    }
+  </style>
+</head>
+<body>
+  <header id="topbar">
+    <span id="dot" class="dot"></span>
+    <span class="title">截屏解题助手</span>
+    <span id="conn-text" class="conn-text">连接中…</span>
+    <span class="spacer"></span>
+    <button id="btn-font-minus" class="icon-btn" title="减小字号">A-</button>
+    <button id="btn-font-plus" class="icon-btn" title="增大字号">A+</button>
+    <button id="btn-fullscreen" class="icon-btn" title="全屏只看答案">全屏</button>
+  </header>
+
+  <main id="content">
+    <div class="inner">
+      <div id="error" class="error" hidden></div>
+      <div id="shots" hidden></div>
+      <div id="placeholder">等待截屏，答案将实时显示在这里<br/>可点下方「截屏解题」开始</div>
+      <article id="solution"></article>
+      <div id="loading" hidden><span class="spin"></span>正在生成…</div>
+    </div>
+  </main>
+
+  <footer id="controls">
+    <button id="btn-capture" class="btn btn-primary btn-capture">📷 截屏解题</button>
+    <button id="btn-thinking" class="btn btn-thinking">🧠 深度思考：已关闭</button>
+    <button id="btn-scene" class="btn btn-scene">📑 场景：--</button>
+    <div class="row">
+      <button id="btn-append" class="btn">追加截图</button>
+      <button id="btn-stop" class="btn">停止生成</button>
+      <button id="btn-show-window" class="btn" title="点击显示或隐藏电脑窗口">电脑窗口</button>
+    </div>
+    <div id="ask-row">
+      <input id="ask-input" placeholder="输入追问内容…" enterkeyhint="send" />
+      <button id="btn-send" class="btn btn-primary">发送</button>
+    </div>
+  </footer>
+
+  <button id="exit-fullscreen" hidden>退出全屏</button>
+  <div id="toast"></div>
+  <div id="pure-bar" hidden>
+    <button id="pure-capture">📷 截屏</button>
+    <button id="pure-append">追加截图</button>
+    <button id="pure-thinking">🧠 思考:关</button>
+    <button id="pure-scene">📑 场景</button>
+  </div>
+  <div id="shot-modal" hidden><img id="shot-modal-img" alt="截图预览" /></div>
+
+  <script>
+    ;(function () {
+      'use strict'
+
+      function $(id) { return document.getElementById(id) }
+
+      var content = $('content')
+      var solutionEl = $('solution')
+      var placeholderEl = $('placeholder')
+      var errorEl = $('error')
+      var shotsEl = $('shots')
+      var loadingEl = $('loading')
+      var dotEl = $('dot')
+      var connTextEl = $('conn-text')
+      var askInput = $('ask-input')
+
+      // ---- Connection ----
+      var token = new URLSearchParams(location.search).get('token') || ''
+      var ws = null
+      var backoff = 1000
+
+      function setStatus(kind, text) {
+        dotEl.className = 'dot ' + kind
+        connTextEl.textContent = text
+      }
+
+      function send(obj) {
+        if (ws && ws.readyState === 1) {
+          ws.send(JSON.stringify(obj))
+        }
+      }
+
+      function connect() {
+        if (!token) {
+          setStatus('bad', '链接缺少配对码，请从电脑端设置页重新扫码访问')
+          return
+        }
+        var proto = location.protocol === 'https:' ? 'wss:' : 'ws:'
+        setStatus('', '连接中…')
+        try {
+          ws = new WebSocket(proto + '//' + location.host + '/?token=' + encodeURIComponent(token))
+        } catch (e) {
+          scheduleReconnect()
+          return
+        }
+        ws.onopen = function () {
+          backoff = 1000
+          setStatus('ok', '已连接')
+          requestWakeLock()
+        }
+        ws.onmessage = function (event) {
+          var msg
+          try { msg = JSON.parse(event.data) } catch (e) { return }
+          handleMessage(msg)
+        }
+        ws.onclose = function () {
+          ws = null
+          scheduleReconnect()
+        }
+        ws.onerror = function () {
+          try { ws.close() } catch (e) { /* handled by onclose */ }
+        }
+      }
+
+      function scheduleReconnect() {
+        setStatus('bad', '连接断开，' + Math.round(backoff / 1000) + 's 后重连…')
+        setTimeout(connect, backoff)
+        backoff = Math.min(backoff * 2, 10000)
+      }
+
+      // ---- State ----
+      var rawMd = ''
+      var screenshots = []
+      var isLoading = false
+      var thinkingOn = false
+      var sceneName = ''
+      var userScrolled = false
+      var renderTimer = null
+
+      function handleMessage(msg) {
+        var type = msg.type
+        var payload = msg.payload
+        switch (type) {
+          case 'init':
+            screenshots = payload.screenshots || []
+            rawMd = payload.solutionText || ''
+            isLoading = !!payload.isLoading
+            thinkingOn = !!payload.enableThinking
+            applyThinking()
+            sceneName = payload.sceneName || ''
+            applyScene()
+            if (payload.errorMessage) showError(payload.errorMessage)
+            else hideError()
+            renderShots()
+            renderSolution(true)
+            setLoading(isLoading)
+            break
+          case 'solution-clear':
+            rawMd = ''
+            screenshots = []
+            hideError()
+            renderShots()
+            renderSolution(true)
+            break
+          case 'screenshots-updated':
+            screenshots = payload || []
+            renderShots()
+            break
+          case 'screenshot-taken':
+            break
+          case 'ai-loading-start':
+            hideError()
+            setLoading(true)
+            break
+          case 'ai-loading-end':
+            setLoading(false)
+            break
+          case 'solution-chunk':
+            rawMd += payload || ''
+            scheduleRender()
+            break
+          case 'solution-error':
+            showError(payload || '生成失败')
+            break
+          case 'solution-complete':
+          case 'solution-stopped':
+            renderSolution(true)
+            break
+          case 'thinking-state':
+            thinkingOn = !!(payload && payload.enabled)
+            applyThinking()
+            break
+          case 'scene-state':
+            sceneName = (payload && payload.sceneName) || ''
+            applyScene()
+            showToast(sceneName ? '已切换：' + sceneName : '场景已切换')
+            break
+          case 'follow-up-result':
+            if (payload && payload.success === false) {
+              showError('追问失败：' + (payload.error || '未知错误'))
+            }
+            break
+          case 'pong':
+            break
+        }
+      }
+
+      // ---- Rendering ----
+      function escapeHtml(text) {
+        return text
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+      }
+
+      // Minimal sanitizer: markdown comes from AI output, so drop scripts,
+      // event handlers and javascript: URLs before touching innerHTML.
+      function sanitize(html) {
+        var tpl = document.createElement('template')
+        tpl.innerHTML = html
+        var bad = tpl.content.querySelectorAll('script,style,iframe,object,embed,form,link,meta')
+        Array.prototype.forEach.call(bad, function (node) { node.remove() })
+        var all = tpl.content.querySelectorAll('*')
+        Array.prototype.forEach.call(all, function (node) {
+          for (var i = node.attributes.length - 1; i >= 0; i--) {
+            var attr = node.attributes[i]
+            var name = attr.name.toLowerCase()
+            var isJsUrl = (name === 'href' || name === 'src') && /^\s*javascript:/i.test(attr.value)
+            if (name.indexOf('on') === 0 || isJsUrl) {
+              node.removeAttribute(attr.name)
+            }
+          }
+        })
+        return tpl.innerHTML
+      }
+
+      function scheduleRender() {
+        if (renderTimer) return
+        renderTimer = setTimeout(function () {
+          renderTimer = null
+          renderSolution(false)
+        }, 200)
+      }
+
+      function renderSolution(immediate) {
+        if (renderTimer && immediate) {
+          clearTimeout(renderTimer)
+          renderTimer = null
+        }
+        if (!rawMd) {
+          solutionEl.innerHTML = ''
+          updatePlaceholder()
+          return
+        }
+        var html
+        try {
+          if (window.marked && window.marked.parse) {
+            html = window.marked.parse(rawMd)
+          } else {
+            html = '<pre>' + escapeHtml(rawMd) + '</pre>'
+          }
+        } catch (e) {
+          html = '<pre>' + escapeHtml(rawMd) + '</pre>'
+        }
+        solutionEl.innerHTML = sanitize(html)
+        enhanceCodeBlocks()
+        updatePlaceholder()
+        if (!userScrolled) {
+          content.scrollTop = content.scrollHeight
+        }
+      }
+
+      function enhanceCodeBlocks() {
+        var pres = solutionEl.querySelectorAll('pre')
+        Array.prototype.forEach.call(pres, function (pre) {
+          if (pre.querySelector('.copy-btn')) return
+          var btn = document.createElement('button')
+          btn.className = 'copy-btn'
+          btn.textContent = '复制'
+          btn.addEventListener('click', function () {
+            var code = pre.querySelector('code')
+            var text = code ? code.innerText : pre.innerText
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+              navigator.clipboard.writeText(text).then(
+                function () {
+                  btn.textContent = '已复制'
+                  setTimeout(function () { btn.textContent = '复制' }, 1500)
+                },
+                function () { /* copy denied */ }
+              )
+            }
+          })
+          pre.appendChild(btn)
+        })
+      }
+
+      function renderShots() {
+        shotsEl.innerHTML = ''
+        shotsEl.hidden = screenshots.length === 0
+        screenshots.forEach(function (b64) {
+          if (typeof b64 !== 'string') return
+          var img = document.createElement('img')
+          img.src = 'data:image/png;base64,' + b64
+          img.alt = '截图'
+          img.addEventListener('click', function () {
+            $('shot-modal-img').src = img.src
+            $('shot-modal').hidden = false
+          })
+          shotsEl.appendChild(img)
+        })
+        updatePlaceholder()
+      }
+
+      function updatePlaceholder() {
+        placeholderEl.hidden = !!(rawMd || screenshots.length || errorEl.textContent)
+      }
+
+      function showError(message) {
+        errorEl.textContent = message
+        errorEl.hidden = false
+        updatePlaceholder()
+      }
+
+      function hideError() {
+        errorEl.textContent = ''
+        errorEl.hidden = true
+        updatePlaceholder()
+      }
+
+      function setLoading(loading) {
+        isLoading = loading
+        loadingEl.hidden = !loading
+      }
+
+      content.addEventListener('scroll', function () {
+        var distance = content.scrollHeight - content.scrollTop - content.clientHeight
+        userScrolled = distance > 80
+      })
+
+      $('shot-modal').addEventListener('click', function () {
+        $('shot-modal').hidden = true
+      })
+
+      // ---- Screen wake lock (keep the display on while viewing answers) ----
+      var wakeLock = null
+
+      function requestWakeLock() {
+        if (!('wakeLock' in navigator) || !navigator.wakeLock) return
+        if (wakeLock && wakeLock.released === false) return
+        navigator.wakeLock
+          .request('screen')
+          .then(function (lock) {
+            wakeLock = lock
+            wakeLock.addEventListener('release', function () {
+              wakeLock = null
+            })
+          })
+          .catch(function () {
+            /* denied or unsupported — screen may dim normally */
+          })
+      }
+
+      document.addEventListener('visibilitychange', function () {
+        if (document.visibilityState === 'visible') {
+          requestWakeLock()
+        }
+      })
+
+      // ---- Pure display mode: fullscreen shows the answer only ----
+      var pureMode = false
+
+      function applyPure() {
+        document.body.classList.toggle('pure', pureMode)
+        $('exit-fullscreen').hidden = !pureMode
+        $('pure-bar').hidden = !pureMode
+      }
+
+      function enterPure() {
+        pureMode = true
+        applyPure()
+        requestWakeLock()
+        var root = document.documentElement
+        var orientationApi = screen.orientation
+        // Only use the system fullscreen when we can also lock orientation
+        // (Android Chrome/Edge). Elsewhere (iOS, WeChat, OEM browsers) element
+        // fullscreen itself can force landscape with no way to lock portrait,
+        // so those stay in the CSS pure layout, which never rotates.
+        var canLock =
+          orientationApi && typeof orientationApi.lock === 'function' && root.requestFullscreen
+        if (canLock) {
+          root
+            .requestFullscreen()
+            .then(function () {
+              orientationApi.lock('portrait').catch(function () {
+                // Lock refused (e.g. plain-HTTP insecure context): leave
+                // fullscreen instead of staying in browser-forced landscape
+                if (document.fullscreenElement && document.exitFullscreen) {
+                  document.exitFullscreen().catch(function () {})
+                }
+              })
+            })
+            .catch(function () {})
+        }
+      }
+
+      function exitPure() {
+        pureMode = false
+        applyPure()
+        if (screen.orientation && screen.orientation.unlock) {
+          try {
+            screen.orientation.unlock()
+          } catch (e) {
+            /* not locked */
+          }
+        }
+        if (document.fullscreenElement && document.exitFullscreen) {
+          document.exitFullscreen().catch(function () {})
+        }
+      }
+
+      $('btn-fullscreen').addEventListener('click', function () {
+        if (pureMode) {
+          exitPure()
+        } else {
+          enterPure()
+        }
+      })
+      $('exit-fullscreen').addEventListener('click', exitPure)
+
+      // If the system exits fullscreen (back gesture), stay in the pure layout
+      document.addEventListener('fullscreenchange', function () {
+        if (pureMode && !document.fullscreenElement) {
+          applyPure()
+        }
+      })
+
+      // ---- Font scale ----
+      var fontScale = parseFloat(localStorage.getItem('fontScale') || '1')
+      if (!isFinite(fontScale)) fontScale = 1
+
+      function applyFont() {
+        document.documentElement.style.fontSize = Math.round(17 * fontScale) + 'px'
+        localStorage.setItem('fontScale', String(fontScale))
+      }
+
+      $('btn-font-plus').addEventListener('click', function () {
+        fontScale = Math.min(fontScale + 0.1, 1.6)
+        applyFont()
+      })
+      $('btn-font-minus').addEventListener('click', function () {
+        fontScale = Math.max(fontScale - 0.1, 0.8)
+        applyFont()
+      })
+
+      // ---- Controls ----
+      // Phone-initiated capture: the desktop takes the screenshot via
+      // desktopCapturer without any keyboard input, avoiding hotkey detection
+      $('btn-capture').addEventListener('click', function () {
+        send({ type: 'take-screenshot' })
+      })
+      $('btn-append').addEventListener('click', function () {
+        send({ type: 'append-screenshot' })
+      })
+      $('pure-capture').addEventListener('click', function () {
+        send({ type: 'take-screenshot' })
+      })
+      $('pure-append').addEventListener('click', function () {
+        send({ type: 'append-screenshot' })
+      })
+      $('pure-thinking').addEventListener('click', function () {
+        send({ type: 'toggle-thinking' })
+      })
+
+      // ---- Thinking toggle (server echoes authoritative state back) ----
+      function applyThinking() {
+        var mainBtn = $('btn-thinking')
+        mainBtn.textContent = thinkingOn ? '🧠 深度思考：已开启' : '🧠 深度思考：已关闭'
+        mainBtn.classList.toggle('thinking-on', thinkingOn)
+        var pureBtn = $('pure-thinking')
+        pureBtn.textContent = thinkingOn ? '🧠 思考:开' : '🧠 思考:关'
+        pureBtn.classList.toggle('thinking-on', thinkingOn)
+      }
+
+      $('btn-thinking').addEventListener('click', function () {
+        send({ type: 'toggle-thinking' })
+      })
+
+      // ---- Prompt scene switch (cycles in the renderer, state echoes back) ----
+      var toastTimer = null
+
+      function showToast(text) {
+        var el = $('toast')
+        el.textContent = text
+        el.classList.add('show')
+        if (toastTimer) clearTimeout(toastTimer)
+        toastTimer = setTimeout(function () {
+          el.classList.remove('show')
+        }, 1800)
+      }
+
+      function applyScene() {
+        $('btn-scene').textContent = '📑 场景：' + (sceneName || '--')
+      }
+
+      $('btn-scene').addEventListener('click', function () {
+        send({ type: 'switch-scene' })
+      })
+      $('pure-scene').addEventListener('click', function () {
+        send({ type: 'switch-scene' })
+      })
+      $('btn-show-window').addEventListener('click', function () {
+        send({ type: 'toggle-window' })
+      })
+      $('btn-stop').addEventListener('click', function () {
+        send({ type: 'stop-stream' })
+      })
+
+      function submitQuestion() {
+        var question = askInput.value.trim()
+        if (!question) return
+        send({ type: 'follow-up', payload: { question: question } })
+        askInput.value = ''
+        askInput.blur()
+      }
+
+      $('btn-send').addEventListener('click', submitQuestion)
+      askInput.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') submitQuestion()
+      })
+
+      // ---- Boot ----
+      applyFont()
+      requestWakeLock()
+      connect()
+    })()
+  </script>
+</body>
+</html>

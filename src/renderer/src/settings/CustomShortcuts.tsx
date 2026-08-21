@@ -87,6 +87,11 @@ export function CustomShortcuts() {
             shortcut="stopSolutionStream"
           />
           <Shortcut
+            label="切换提示词场景"
+            description="在预置/自定义提示词场景间循环切换"
+            shortcut="switchPromptScene"
+          />
+          <Shortcut
             label="语音转录"
             description="开始/暂停实时语音转录"
             shortcut="toggleTranscription"

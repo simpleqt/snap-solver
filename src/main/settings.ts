@@ -1,5 +1,16 @@
 import { app, dialog, ipcMain } from 'electron'
 
+// NOTE: this module is pulled into the web (renderer) TypeScript program via
+// preload/index.ts, so it must not import node-only modules (mobile-server
+// etc.). Features that react to settings changes register a hook instead.
+type SettingsChangeHook = (changed: Record<string, unknown>) => void
+const settingsChangeHooks: SettingsChangeHook[] = []
+
+/** Register a hook fired after settings are updated via the updateAppSettings IPC. */
+export function registerSettingsChangeHook(hook: SettingsChangeHook): void {
+  settingsChangeHooks.push(hook)
+}
+
 ipcMain.handle('getAppSettings', () => {
   return settings
 })
@@ -9,6 +20,7 @@ ipcMain.handle('updateAppSettings', (_event, _settings) => {
   if ('hideDockIcon' in _settings) {
     applyDockVisibility(settings.hideDockIcon)
   }
+  settingsChangeHooks.forEach((hook) => hook(_settings))
 })
 
 /** Show/hide the macOS dock icon. No-op on other platforms. */
@@ -39,10 +51,15 @@ export const settings = {
   customPrompt: '',
   screenshotAutoSave: false,
   screenshotDir: '',
-  dashscopeApiKey: '',
-  hideDockIcon: false,
+  dashscopeApiKey: process.env.DASHSCOPE_API_KEY || '',
+  hideDockIcon: true,
   audioInputDeviceId: '',
-  audioOutputDeviceId: ''
+  audioOutputDeviceId: '',
+  mobileDisplayEnabled: false,
+  mobileServerPort: 3170,
+  mobilePairingToken: '',
+  /** Session-level thinking toggle (phone 「深度思考」), read by ai.ts at request time */
+  enableThinking: false
 }
 
 export type AppSettings = typeof settings

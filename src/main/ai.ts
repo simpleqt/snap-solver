@@ -5,8 +5,14 @@ import { settings, AppSettings } from './settings'
 // The system prompt is fully managed by the renderer (prompt scenes in the
 // settings store) and synced here via updateAppSettings on app startup
 function getSystemPrompt(extra?: string) {
-  return [settings.customPrompt, extra].filter(Boolean).join('\n\n') || undefined
+  const basePrompt = settings.customPrompt || ''
+  return [basePrompt, extra].filter(Boolean).join('\n\n') || undefined
 }
+
+// Large output budget so long coding answers (full code + alternatives) are
+// not truncated mid-stream. Some models cap this value; keep it high but
+// within the context window of the configured model (Kimi-K2.6: 128k).
+const MAX_OUTPUT_TOKENS = 100000
 
 function getModel(_settings: AppSettings) {
   const fallbackModel = settings.apiBaseURL.includes('siliconflow')
@@ -15,16 +21,126 @@ function getModel(_settings: AppSettings) {
   return _settings.model || fallbackModel
 }
 
-export function getSolutionStream(messages: ModelMessage[], abortSignal?: AbortSignal) {
-  const openai = createOpenAI({
+function createOpenAIProvider() {
+  const isDashScope = settings.apiBaseURL.includes('aliyuncs.com') || settings.apiBaseURL.includes('dashscope')
+
+  return createOpenAI({
     baseURL: settings.apiBaseURL,
-    apiKey: settings.apiKey
+    apiKey: settings.apiKey,
+    fetch: async (url, options) => {
+      if (!options?.body) return fetch(url, options)
+
+      try {
+        const body = JSON.parse(options.body as string)
+        const modelStr = String(body.model || '')
+        const isKimi = modelStr.includes('kimi')
+
+        console.log('[AI Request] URL:', String(url))
+        console.log('[AI Request] BEFORE =>', JSON.stringify(body))
+
+        // kimi/kimi-k3 (DashScope) only allows temperature=0.6.
+        // Check the MODEL NAME in the request body (always reliable)
+        // rather than the base URL, which may be set via UI.
+        if (isKimi || isDashScope) {
+          // Remove temperature entirely so the API uses its default (0.6).
+          // Setting it to 0.6 explicitly also works, but removing avoids
+          // any floating-point / serialization edge cases.
+          delete body.temperature
+          delete body.top_p
+          delete body.top_k
+          delete body.frequency_penalty
+          delete body.presence_penalty
+          body.enable_thinking = settings.enableThinking
+        } else {
+          body.extra_body = {
+            ...(body.extra_body || {}),
+            chat_template_kwargs: {
+              enable_thinking: settings.enableThinking
+            }
+          }
+        }
+
+        console.log('[AI Request] AFTER  =>', JSON.stringify(body))
+
+        return fetch(url, {
+          ...options,
+          body: JSON.stringify(body)
+        })
+      } catch (e) {
+        console.error('[AI Request] Failed to parse/modify body:', e)
+        return fetch(url, options)
+      }
+    }
+  })
+}
+
+function transformMessages(messages: any[]) {
+  return messages.map((m) => {
+    if (Array.isArray(m.content)) {
+      return {
+        ...m,
+        content: m.content.map((item: any) => {
+          if (item.type === 'image') {
+            const imageData = item.image
+            const base64 = imageData.startsWith('data:')
+              ? imageData
+              : `data:image/png;base64,${imageData}`
+
+            // @ai-sdk/openai converts `type: 'file'` + `mediaType: 'image/*'`
+            // to OpenAI `image_url`, but passes `type: 'image'` through as-is,
+            // which causes DashScope/compatible providers to reject it.
+            return {
+              type: 'file',
+              data: base64,
+              mediaType: 'image/png'
+            }
+          }
+          // DashScope is very picky. Let's ensure text items are exactly as expected.
+          if (item.type === 'text') {
+            return {
+              type: 'text',
+              text: item.text
+            }
+          }
+          return item
+        })
+      }
+    }
+    // If content is just a string, leave it as is
+    return m
+  })
+}
+
+export function getSolutionStream(messages: ModelMessage[], abortSignal?: AbortSignal) {
+  const modelName = getModel(settings)
+  const systemPrompt = getSystemPrompt()
+  
+  console.log('API Request Detail:', {
+    baseURL: settings.apiBaseURL,
+    model: modelName,
+    systemPrompt: systemPrompt?.substring(0, 50) + '...',
+    messageCount: messages.length
   })
 
+  const openai = createOpenAIProvider()
+
+  // For DashScope multimodal, it's often safer to include system prompt as the first message
+  const isDashScope = settings.apiBaseURL.includes('aliyuncs.com') || settings.apiBaseURL.includes('dashscope')
+  const finalMessages = isDashScope 
+    ? [
+        { role: 'system', content: systemPrompt },
+        ...transformMessages(messages)
+      ]
+    : transformMessages(messages)
+
   const { textStream } = streamText({
-    model: openai.chat(getModel(settings)),
-    system: getSystemPrompt(),
-    messages,
+    model: openai.chat(modelName),
+    maxOutputTokens: MAX_OUTPUT_TOKENS,
+    // temperature omitted: kimi/kimi-k3 only allows 0.6 (its default);
+    // let each provider use its own default to avoid API rejection.
+    // If we included system in messages, don't pass it here
+    system: isDashScope ? undefined : systemPrompt,
+    messages: finalMessages,
     abortSignal,
     onError: (err) => {
       throw err.error ?? err
@@ -38,10 +154,9 @@ export function getFollowUpStream(
   userQuestion: string,
   abortSignal?: AbortSignal
 ) {
-  const openai = createOpenAI({
-    baseURL: settings.apiBaseURL,
-    apiKey: settings.apiKey
-  })
+  const modelName = getModel(settings)
+  const systemPrompt = getSystemPrompt()
+  const openai = createOpenAIProvider()
 
   // Add the user's follow-up question to the conversation
   const updatedMessages: ModelMessage[] = [
@@ -57,10 +172,19 @@ export function getFollowUpStream(
     }
   ]
 
+  const isDashScope = settings.apiBaseURL.includes('aliyuncs.com') || settings.apiBaseURL.includes('dashscope')
+  const finalMessages = isDashScope 
+    ? [
+        { role: 'system', content: systemPrompt },
+        ...transformMessages(updatedMessages)
+      ]
+    : transformMessages(updatedMessages)
+
   const { textStream } = streamText({
-    model: openai.chat(getModel(settings)),
-    system: getSystemPrompt(),
-    messages: updatedMessages,
+    model: openai.chat(modelName),
+    maxOutputTokens: MAX_OUTPUT_TOKENS,
+    system: isDashScope ? undefined : systemPrompt,
+    messages: finalMessages,
     abortSignal,
     onError: (err) => {
       throw err.error ?? err
@@ -70,17 +194,25 @@ export function getFollowUpStream(
 }
 
 export function getGeneralStream(messages: ModelMessage[], abortSignal?: AbortSignal) {
-  const openai = createOpenAI({
-    baseURL: settings.apiBaseURL,
-    apiKey: settings.apiKey
-  })
+  const modelName = getModel(settings)
+  const systemPrompt = getSystemPrompt(
+    '注意：如果有多张截图，请结合所有截图内容进行完整分析，不要遗漏任何部分。'
+  )
+  const openai = createOpenAIProvider()
+
+  const isDashScope = settings.apiBaseURL.includes('aliyuncs.com') || settings.apiBaseURL.includes('dashscope')
+  const finalMessages = isDashScope 
+    ? [
+        { role: 'system', content: systemPrompt },
+        ...transformMessages(messages)
+      ]
+    : transformMessages(messages)
 
   const { textStream } = streamText({
-    model: openai.chat(getModel(settings)),
-    system: getSystemPrompt(
-      '注意：如果有多张截图，请结合所有截图内容进行完整分析，不要遗漏任何部分。'
-    ),
-    messages,
+    model: openai.chat(modelName),
+    maxOutputTokens: MAX_OUTPUT_TOKENS,
+    system: isDashScope ? undefined : systemPrompt,
+    messages: finalMessages,
     abortSignal,
     onError: (err) => {
       throw err.error ?? err
