@@ -1,4 +1,4 @@
-# Snap Solver · 截屏解题助手
+# Snanswer · 截屏解题助手
 
 ![使用演示](https://github.com/user-attachments/assets/19781594-3108-4711-a54b-9d36496787bc)
 
@@ -24,9 +24,9 @@
 
 ## 如何使用
 
-> 注意：项目有编译安装包，你也可以直接下载安装包使用（如何安装，以及安装完后如何配置，请参考 [Wiki 教程](https://github.com/simpleqt/snap-solver/wiki/%E7%9B%B4%E6%8E%A5%E4%B8%8B%E8%BD%BD%E5%AE%89%E8%A3%85%E5%8C%85%E4%BD%BF%E7%94%A8)）。
+> 注意：项目有编译安装包，你也可以直接下载安装包使用（如何安装，以及安装完后如何配置，请参考 [Wiki 教程](https://github.com/simpleqt/snanswer/wiki/%E7%9B%B4%E6%8E%A5%E4%B8%8B%E8%BD%BD%E5%AE%89%E8%A3%85%E5%8C%85%E4%BD%BF%E7%94%A8)）。
 
-> 注意：详细的使用教程请移步本项目的 [Wiki](https://github.com/simpleqt/snap-solver/wiki) 页面查看。
+> 注意：详细的使用教程请移步本项目的 [Wiki](https://github.com/simpleqt/snanswer/wiki) 页面查看。
 
 ### 1. 安装依赖
 
@@ -97,7 +97,7 @@ API_KEY="sk-1234567890" # 代理服务商的 API Key，这里只是示例，需�
 
 ## 视频教程
 
-具体可到 [Wiki](https://github.com/simpleqt/snap-solver/wiki) 页面查看。
+具体可到 [Wiki](https://github.com/simpleqt/snanswer/wiki) 页面查看。
 
 
 ## 许可协议（License）

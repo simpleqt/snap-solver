@@ -13,7 +13,7 @@ import { TranscriptionBar } from './TranscriptionBar'
 import { InterviewAssistantPanel } from './InterviewAssistantPanel'
 
 export default function CoderPage() {
-  const { opacity, dashscopeApiKey } = useSettingsStore()
+  const { opacity, dashscopeApiKey, answerFontColor, transparentAnswerMode } = useSettingsStore()
   const { syncAppState } = useAppStore()
   const { isTranscribing, setIsTranscribing, setTranscriptionText, clearText } =
     useTranscriptionStore()
@@ -25,6 +25,14 @@ export default function CoderPage() {
       document.body.style.opacity = ''
     }
   }, [opacity])
+
+  useEffect(() => {
+    document.documentElement.style.setProperty('--answer-color', answerFontColor)
+    document.body.classList.toggle('transparent-answer', transparentAnswerMode)
+    return () => {
+      document.body.classList.remove('transparent-answer')
+    }
+  }, [answerFontColor, transparentAnswerMode])
 
   useEffect(() => {
     window.api.updateAppState({ inCoderPage: true })
@@ -142,11 +150,11 @@ export default function CoderPage() {
 
   return (
     <div className="relative h-screen">
-      <AppHeader />
+      {!transparentAnswerMode && <AppHeader />}
       <InterviewAssistantPanel />
       <AppContent />
       <TranscriptionBar />
-      <AppStatusBar />
+      {!transparentAnswerMode && <AppStatusBar />}
       <PrerequisitesChecker />
     </div>
   )

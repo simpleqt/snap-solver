@@ -112,6 +112,8 @@ function generatePairingToken(): string {
 export default function SettingsPage() {
   const {
     opacity,
+    answerFontColor,
+    transparentAnswerMode,
     apiBaseURL,
     apiKey,
     model,
@@ -653,6 +655,50 @@ export default function SettingsPage() {
                 />
                 <span className="text-xs whitespace-nowrap">不透明</span>
               </div>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium">
+                答案字体颜色
+                <span className="ml-2 text-xs font-light">透明背景下建议选亮色</span>
+              </label>
+              <div className="w-60 flex items-center justify-end gap-1.5">
+                {['#f8fafc', '#4ade80', '#facc15', '#22d3ee', '#f87171'].map((color) => (
+                  <button
+                    key={color}
+                    className={cn(
+                      'h-6 w-6 rounded-full border-2 cursor-pointer transition-transform',
+                      answerFontColor.toLowerCase() === color
+                        ? 'border-blue-500 scale-110'
+                        : 'border-gray-400/60 hover:scale-105'
+                    )}
+                    style={{ backgroundColor: color }}
+                    title={color}
+                    onClick={() => updateSetting('answerFontColor', color)}
+                  />
+                ))}
+                <input
+                  type="color"
+                  value={answerFontColor}
+                  onChange={(e) => updateSetting('answerFontColor', e.target.value)}
+                  className="ml-1 h-7 w-8 cursor-pointer border border-gray-300 rounded bg-white p-0.5"
+                  title="自定义颜色"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium">
+                背景完全透明
+                <span className="ml-2 text-xs font-light">
+                  仅答案文字悬浮显示，隐藏标题栏/状态栏/截图预览
+                </span>
+              </label>
+              <Switch
+                className="scale-y-90"
+                checked={transparentAnswerMode}
+                onCheckedChange={(checked) => updateSetting('transparentAnswerMode', checked)}
+              />
             </div>
           </div>
         </div>

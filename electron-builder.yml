@@ -1,4 +1,4 @@
-appId: com.snapsolver.app
+appId: com.snanswer.app
 productName: 截屏解题助手
 directories:
   buildResources: build
@@ -45,6 +45,6 @@ npmRebuild: false
 publish:
   provider: github
   owner: simpleqt
-  repo: snap-solver
+  repo: snanswer
 electronDownload:
   mirror: https://npmmirror.com/mirrors/electron/

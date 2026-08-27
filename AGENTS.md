@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-**Snap Solver** (截屏解题助手) is a desktop application that captures screenshots of on-screen problems (coding challenges, exam questions, or anything else) and uses AI (vision models) to generate solutions in real-time. The window is invisible to screen-sharing software, making it suitable for use during coding interviews and online assessments.
+**Snanswer** (截屏解题助手) is a desktop application that captures screenshots of on-screen problems (coding challenges, exam questions, or anything else) and uses AI (vision models) to generate solutions in real-time. The window is invisible to screen-sharing software, making it suitable for use during coding interviews and online assessments.
 
 Key capabilities:
 - Global shortcuts trigger screenshot capture → AI analysis → streamed solution display

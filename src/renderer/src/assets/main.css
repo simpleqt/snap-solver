@@ -21,6 +21,35 @@
   @apply h-[calc(100vh-36px)] overflow-y-auto bg-gray-500;
 }
 
+/* Answer font color (set from settings via --answer-color) */
+#app-content .prose {
+  --tw-prose-body: var(--answer-color, #f8fafc);
+  --tw-prose-headings: var(--answer-color, #f8fafc);
+  --tw-prose-bold: var(--answer-color, #f8fafc);
+  --tw-prose-quotes: var(--answer-color, #f8fafc);
+  --tw-prose-captions: var(--answer-color, #f8fafc);
+  --tw-prose-counters: var(--answer-color, #f8fafc);
+  --tw-prose-bullets: var(--answer-color, #f8fafc);
+}
+
+/* Fully transparent answer mode: no window background, only the text */
+body.transparent-answer #app-header {
+  display: none;
+}
+body.transparent-answer #app-content {
+  @apply bg-transparent;
+  height: 100vh;
+}
+body.transparent-answer #app-content .prose {
+  text-shadow:
+    0 0 6px rgba(0, 0, 0, 0.9),
+    0 1px 3px rgba(0, 0, 0, 0.8);
+}
+body.transparent-answer #app-content pre,
+body.transparent-answer #app-content pre code {
+  text-shadow: none;
+}
+
 .transcription-scroll {
   overflow: auto;
   scrollbar-gutter: stable;

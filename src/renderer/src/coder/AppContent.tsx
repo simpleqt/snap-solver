@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useShortcutsStore } from '@/lib/store/shortcuts'
 import { useSolutionStore } from '@/lib/store/solution'
+import { useSettingsStore } from '@/lib/store/settings'
 import MarkdownRenderer from '@/components/MarkdownRenderer'
 import ShortcutRenderer from '@/components/ShortcutRenderer'
 
@@ -17,6 +18,7 @@ export function AppContent() {
     setErrorMessage,
     clearSolution
   } = useSolutionStore()
+  const transparentAnswerMode = useSettingsStore((s) => s.transparentAnswerMode)
 
   const [recentScreenshots, setRecentScreenshots] = useState<string[]>([])
 
@@ -149,30 +151,31 @@ export function AppContent() {
         </div>
       )}
 
-      {/* Screenshot Gallery */}
-      {recentScreenshots.length > 0 ? (
-        <div className="mb-4 flex gap-2 overflow-x-auto pb-2">
-          {recentScreenshots.map((data, index) => (
+      {/* Screenshot Gallery (hidden in transparent answer mode) */}
+      {!transparentAnswerMode &&
+        (recentScreenshots.length > 0 ? (
+          <div className="mb-4 flex gap-2 overflow-x-auto pb-2">
+            {recentScreenshots.map((data, index) => (
+              <img
+                key={index}
+                src={`data:image/png;base64,${data}`}
+                alt={`Screenshot ${index + 1}`}
+                className="w-40 h-auto flex-shrink-0 border border-gray-600 rounded-lg shadow-lg hover:shadow-xl transition-shadow"
+                title={`第 ${index + 1} 张截图`}
+              />
+            ))}
+          </div>
+        ) : screenshotData ? (
+          <div className="mb-4">
             <img
-              key={index}
-              src={`data:image/png;base64,${data}`}
-              alt={`Screenshot ${index + 1}`}
-              className="w-40 h-auto flex-shrink-0 border border-gray-600 rounded-lg shadow-lg hover:shadow-xl transition-shadow"
-              title={`第 ${index + 1} 张截图`}
+              src={`data:image/png;base64,${screenshotData}`}
+              alt="Screenshot"
+              className="w-40 h-auto border border-gray-600 rounded-lg shadow-lg"
             />
-          ))}
-        </div>
-      ) : screenshotData ? (
-        <div className="mb-4">
-          <img
-            src={`data:image/png;base64,${screenshotData}`}
-            alt="Screenshot"
-            className="w-40 h-auto border border-gray-600 rounded-lg shadow-lg"
-          />
-        </div>
-      ) : (
-        <ShortcutTip />
-      )}
+          </div>
+        ) : (
+          <ShortcutTip />
+        ))}
 
       {/* Solution Display */}
       <MarkdownRenderer>{solutionChunks.join('')}</MarkdownRenderer>

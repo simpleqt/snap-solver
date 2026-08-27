@@ -78,6 +78,11 @@ interface Settings {
 
   opacity: number
 
+  /** Answer text color on the coder overlay */
+  answerFontColor: string
+  /** Fully transparent overlay background: only the answer text floats */
+  transparentAnswerMode: boolean
+
   screenshotAutoSave: boolean
   screenshotDir: string
 
@@ -120,6 +125,9 @@ const defaultSettings: Settings = {
   activeSceneId: CODING_SCENE_ID,
 
   opacity: 0.8,
+
+  answerFontColor: '#f8fafc',
+  transparentAnswerMode: false,
 
   screenshotAutoSave: true,
   screenshotDir: '',
