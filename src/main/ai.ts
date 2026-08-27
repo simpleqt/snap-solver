@@ -35,9 +35,19 @@ function createOpenAIProvider() {
         const body = JSON.parse(options.body as string)
         const modelStr = String(body.model || '')
         const isKimi = modelStr.includes('kimi')
+        // DeepSeek accepts the standard OpenAI image_url format our pipeline
+        // already produces; only its parameter caps and vLLM-only fields differ
+        const isDeepSeek = String(url).includes('deepseek.com')
 
         console.log('[AI Request] URL:', String(url))
         console.log('[AI Request] BEFORE =>', JSON.stringify(body))
+
+        if (isDeepSeek) {
+          // DeepSeek caps output tokens at 8k; our 100k budget would 400
+          if (typeof body.max_tokens === 'number' && body.max_tokens > 8192) {
+            body.max_tokens = 8192
+          }
+        }
 
         // kimi/kimi-k3 (DashScope) only allows temperature=0.6.
         // Check the MODEL NAME in the request body (always reliable)
@@ -52,7 +62,9 @@ function createOpenAIProvider() {
           delete body.frequency_penalty
           delete body.presence_penalty
           body.enable_thinking = settings.enableThinking
-        } else {
+        } else if (!isDeepSeek) {
+          // chat_template_kwargs is a vLLM-only extension; hosted providers
+          // like DeepSeek reject unknown fields, so inject it elsewhere only
           body.extra_body = {
             ...(body.extra_body || {}),
             chat_template_kwargs: {

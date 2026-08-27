@@ -48,6 +48,60 @@ import {
 /** Derived from the preload API so renderer stays in sync with main automatically */
 type MobileServerInfo = Awaited<ReturnType<typeof window.api.getMobileServerInfo>>
 
+/** Built-in OpenAI-compatible provider presets (model = recommended vision model) */
+const PROVIDER_PRESETS = [
+  {
+    id: 'deepseek',
+    name: 'DeepSeek',
+    url: 'https://api.deepseek.com',
+    model: 'deepseek-v4-flash-vision-exp',
+    note: '视觉模型为 deepseek-v4-flash-vision-exp，其他模型传图会报错'
+  },
+  {
+    id: 'siliconflow',
+    name: '硅基流动',
+    url: 'https://api.siliconflow.cn/v1',
+    model: 'Qwen/Qwen3-VL-32B-Instruct',
+    note: '国内平台，支持支付宝付款'
+  },
+  {
+    id: 'dashscope',
+    name: '阿里百炼',
+    url: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+    model: 'qwen-vl-max',
+    note: '通义系列，语音转录也用此平台 Key'
+  },
+  {
+    id: 'zhipu',
+    name: '智谱 GLM',
+    url: 'https://open.bigmodel.cn/api/paas/v4',
+    model: 'glm-4.5v',
+    note: 'GLM 系列视觉模型'
+  },
+  {
+    id: 'moonshot',
+    name: '月之暗面 Kimi',
+    url: 'https://api.moonshot.cn/v1',
+    model: 'moonshot-v1-8k-vision-preview',
+    note: 'Kimi 视觉预览模型'
+  },
+  {
+    id: 'openrouter',
+    name: 'OpenRouter',
+    url: 'https://openrouter.ai/api/v1',
+    model: 'gpt-5-mini',
+    note: '海外聚合平台'
+  },
+  {
+    id: 'openai',
+    name: 'OpenAI',
+    url: 'https://api.openai.com/v1',
+    model: 'gpt-5-mini',
+    note: '官方 API'
+  },
+  { id: 'custom', name: '自定义（OpenAI 兼容）', url: '', model: '', note: '手动填写任意兼容地址' }
+]
+
 const MOBILE_TOKEN_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789'
 
 function generatePairingToken(): string {
@@ -189,6 +243,37 @@ export default function SettingsPage() {
           </h2>
 
           <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium">
+                模型服务商
+                <span className="ml-2 text-xs font-light">选择后自动填入地址与推荐视觉模型</span>
+              </label>
+              <Select
+                value={PROVIDER_PRESETS.find((p) => p.url && p.url === apiBaseURL)?.id ?? 'custom'}
+                onValueChange={(val) => {
+                  const preset = PROVIDER_PRESETS.find((p) => p.id === val)
+                  if (!preset) return
+                  if (preset.url) {
+                    updateSetting('apiBaseURL', preset.url)
+                    if (preset.model) {
+                      updateSetting('model', preset.model)
+                    }
+                  }
+                }}
+              >
+                <SelectTrigger className="w-60 bg-white">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {PROVIDER_PRESETS.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
             <div className="flex items-center justify-between">
               <label className="text-sm font-medium">
                 API Base URL

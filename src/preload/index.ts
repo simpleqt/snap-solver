@@ -11,6 +11,11 @@ const api = {
   // Update app settings
   updateAppSettings: (settings: Partial<AppSettings>) =>
     ipcRenderer.invoke('updateAppSettings', settings),
+  // Fetch the model list from an OpenAI-compatible provider
+  listModels: (params: { baseURL?: string; apiKey?: string }) =>
+    ipcRenderer.invoke('list-models', params) as Promise<
+      { success: true; models: string[] } | { success: false; error: string }
+    >,
 
   // Update app state
   updateAppState: (state: Partial<AppState>) => ipcRenderer.invoke('updateAppState', state),
