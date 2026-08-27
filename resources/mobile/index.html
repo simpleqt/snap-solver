@@ -191,12 +191,18 @@
       font-weight: 600;
     }
     #controls .btn-thinking,
-    #controls .btn-scene {
+    #controls .btn-scene,
+    #controls .btn-assistant {
       width: 100%;
       margin-bottom: 0.5rem;
       padding: 0.5rem 0.5rem;
       font-size: 0.82rem;
       color: #94a3b8;
+    }
+    #controls .btn-assistant.assistant-on {
+      color: #e2e8f0;
+      background: #14532d;
+      border-color: #22c55e;
     }
     .thinking-on,
     #pure-bar button.thinking-on {
@@ -273,6 +279,114 @@
     #toast.show {
       opacity: 1;
     }
+    #assistant {
+      display: flex;
+      flex-direction: column;
+      gap: 0.7rem;
+      margin-bottom: 0.9rem;
+    }
+    #assistant .qa {
+      border: 1px solid #263449;
+      border-left: 3px solid #3b82f6;
+      border-radius: 0.6rem;
+      background: #131c31;
+      padding: 0.7rem 0.8rem;
+    }
+    #assistant .qa .q {
+      color: #94a3b8;
+      font-size: 0.78rem;
+      margin-bottom: 0.4rem;
+      word-break: break-word;
+    }
+    #assistant .qa .a {
+      font-size: 0.92rem;
+    }
+    #assistant .qa .a :first-child {
+      margin-top: 0;
+    }
+    #assistant .qa.streaming {
+      border-left-color: #22c55e;
+    }
+    #assistant .qa .a pre {
+      position: relative;
+      background: #020617;
+      border: 1px solid #1e293b;
+      border-radius: 0.5rem;
+      padding: 0.7rem;
+      margin: 0.5em 0;
+      overflow-x: auto;
+      font-size: 0.82em;
+      line-height: 1.5;
+    }
+    #assistant .qa .a code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+    #assistant .qa .a :not(pre) > code {
+      background: #1e293b;
+      padding: 0.1em 0.35em;
+      border-radius: 0.3rem;
+      font-size: 0.9em;
+      color: #7dd3fc;
+    }
+    #assistant .qa .a p,
+    #assistant .qa .a ul,
+    #assistant .qa .a ol {
+      margin: 0.4em 0;
+    }
+    #listen-bar {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      border: 1px dashed #334155;
+      border-radius: 0.6rem;
+      background: rgba(19, 28, 49, 0.7);
+      padding: 0.5rem 0.7rem;
+      margin-bottom: 0.8rem;
+      font-size: 0.78rem;
+      color: #94a3b8;
+      line-height: 1.5;
+    }
+    #listen-bar .rec {
+      width: 0.5rem;
+      height: 0.5rem;
+      border-radius: 50%;
+      background: #ef4444;
+      animation: pulse 1.2s ease-in-out infinite;
+      flex: none;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+    #think-note {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: #94a3b8;
+      padding: 0.35rem 0;
+    }
+    #think-note .spin {
+      width: 0.85rem;
+      height: 0.85rem;
+      border: 2px solid #475569;
+      border-top-color: #e2e8f0;
+      border-radius: 50%;
+      animation: rot 1s linear infinite;
+      flex: none;
+    }
+    #assistant .qa .a h1,
+    #assistant .qa .a h2,
+    #assistant .qa .a h3 {
+      font-size: 1rem;
+      margin: 0.6em 0 0.3em;
+      color: #f1f5f9;
+    }
+    #placeholder2 {
+      color: #64748b;
+      text-align: center;
+      padding: 1rem;
+      font-size: 0.85rem;
+    }
     /* Compact capture actions kept visible in pure mode */
     #pure-bar {
       position: fixed;
@@ -280,9 +394,11 @@
       right: 0;
       bottom: calc(0.5rem + env(safe-area-inset-bottom));
       display: flex;
+      flex-wrap: wrap;
       justify-content: center;
-      gap: 0.6rem;
+      gap: 0.4rem;
       z-index: 30;
+      padding: 0 0.5rem;
     }
     #pure-bar button {
       background: rgba(51, 65, 85, 0.82);
@@ -328,6 +444,11 @@
 
   <main id="content">
     <div class="inner">
+      <div id="assistant" hidden></div>
+      <div id="listen-bar" hidden>
+        <span class="rec"></span>
+        <span id="listen-text">正在收听面试官说话…</span>
+      </div>
       <div id="error" class="error" hidden></div>
       <div id="shots" hidden></div>
       <div id="placeholder">等待截屏，答案将实时显示在这里<br/>可点下方「截屏解题」开始</div>
@@ -340,9 +461,11 @@
     <button id="btn-capture" class="btn btn-primary btn-capture">📷 截屏解题</button>
     <button id="btn-thinking" class="btn btn-thinking">🧠 深度思考：已关闭</button>
     <button id="btn-scene" class="btn btn-scene">📑 场景：--</button>
+    <button id="btn-assistant" class="btn btn-assistant">🎙 实时助手：关</button>
     <div class="row">
       <button id="btn-append" class="btn">追加截图</button>
       <button id="btn-stop" class="btn">停止生成</button>
+      <button id="btn-dblclick" class="btn">🖱 截屏:关</button>
       <button id="btn-show-window" class="btn" title="点击显示或隐藏电脑窗口">电脑窗口</button>
     </div>
     <div id="ask-row">
@@ -358,6 +481,8 @@
     <button id="pure-append">追加截图</button>
     <button id="pure-thinking">🧠 思考:关</button>
     <button id="pure-scene">📑 场景</button>
+    <button id="pure-assistant">🎙 助手:关</button>
+    <button id="pure-dblclick">🖱 截屏:关</button>
   </div>
   <div id="shot-modal" hidden><img id="shot-modal-img" alt="截图预览" /></div>
 
@@ -437,6 +562,10 @@
       var isLoading = false
       var thinkingOn = false
       var sceneName = ''
+      var assistantOn = false
+      var captureMode = 'off'
+      var assistantItems = []
+      var assistantRenderTimer = null
       var userScrolled = false
       var renderTimer = null
 
@@ -452,6 +581,25 @@
             applyThinking()
             sceneName = payload.sceneName || ''
             applyScene()
+            if (payload.assistant) {
+              assistantOn = !!payload.assistant.enabled
+              applyAssistant()
+              assistantItems = (payload.assistant.items || []).map(function (it) {
+                return {
+                  id: it.id,
+                  question: it.question || '',
+                  answer: it.answer || '',
+                  complete: it.complete !== false,
+                  renderedLen: -1,
+                  el: null
+                }
+              })
+              renderAssistant(true)
+            }
+            if (payload.clickCapture) {
+              captureMode = payload.clickCapture.mode || 'off'
+              applyDblClick()
+            }
             if (payload.errorMessage) showError(payload.errorMessage)
             else hideError()
             renderShots()
@@ -497,6 +645,83 @@
             sceneName = (payload && payload.sceneName) || ''
             applyScene()
             showToast(sceneName ? '已切换：' + sceneName : '场景已切换')
+            break
+          case 'assistant-state':
+            assistantOn = !!(payload && payload.enabled)
+            applyAssistant()
+            showToast(assistantOn ? '实时助手已开启' : '实时助手已关闭')
+            break
+          case 'assistant-question': {
+            if (!payload) break
+            // A new question supersedes any in-flight answer
+            assistantItems = assistantItems.filter(function (it) {
+              if (!it.complete && it.el && it.el.parentNode) {
+                it.el.remove()
+                return false
+              }
+              return true
+            })
+            assistantItems.push({
+              id: payload.id,
+              question: payload.question || '',
+              answer: '',
+              complete: false,
+              renderedLen: -1,
+              el: null
+            })
+            $('listen-text').textContent = '正在收听面试官说话…'
+            renderAssistant(true)
+            break
+          }
+          case 'assistant-answer-chunk': {
+            if (!payload) break
+            for (var ai = 0; ai < assistantItems.length; ai++) {
+              if (assistantItems[ai].id === payload.id) {
+                assistantItems[ai].answer += payload.chunk || ''
+                scheduleAssistantRender()
+                break
+              }
+            }
+            break
+          }
+          case 'assistant-listening': {
+            if (assistantOn) {
+              var bar = $('listen-bar')
+              bar.hidden = false
+              var t = (payload && payload.text) || ''
+              $('listen-text').textContent = t || '正在收听面试官说话…'
+              if (!userScrolled) {
+                content.scrollTop = content.scrollHeight
+              }
+            }
+            break
+          }
+          case 'assistant-answer-complete':
+          case 'assistant-answer-error': {
+            if (!payload) break
+            for (var aj = 0; aj < assistantItems.length; aj++) {
+              if (assistantItems[aj].id === payload.id) {
+                var it = assistantItems[aj]
+                it.complete = true
+                if (msg.type === 'assistant-answer-error' && !it.answer) {
+                  it.answer = '生成失败：' + (payload.message || '未知错误')
+                }
+                renderAssistant(true)
+                break
+              }
+            }
+            break
+          }
+          case 'double-click-state':
+            captureMode = (payload && payload.mode) || 'off'
+            applyDblClick()
+            showToast(
+              captureMode === 'single'
+                ? '单击截图已开启'
+                : captureMode === 'double'
+                  ? '双击截图已开启'
+                  : '点击截图已关闭'
+            )
             break
           case 'follow-up-result':
             if (payload && payload.success === false) {
@@ -811,6 +1036,110 @@
       })
       $('pure-scene').addEventListener('click', function () {
         send({ type: 'switch-scene' })
+      })
+
+      // ---- Interview assistant timeline (auto-answer detected questions) ----
+      function applyAssistant() {
+        var mainBtn = $('btn-assistant')
+        mainBtn.textContent = assistantOn ? '🎙 实时助手：开（监听中）' : '🎙 实时助手：关'
+        mainBtn.classList.toggle('assistant-on', assistantOn)
+        var pureBtn = $('pure-assistant')
+        pureBtn.textContent = assistantOn ? '🎙 助手:开' : '🎙 助手:关'
+        pureBtn.classList.toggle('thinking-on', assistantOn)
+        if (!assistantOn) {
+          $('listen-bar').hidden = true
+        }
+      }
+
+      function markdownToHtml(text) {
+        try {
+          if (window.marked && window.marked.parse) {
+            return window.marked.parse(text)
+          }
+          return '<pre>' + escapeHtml(text) + '</pre>'
+        } catch (e) {
+          return '<pre>' + escapeHtml(text) + '</pre>'
+        }
+      }
+
+      function scheduleAssistantRender() {
+        if (assistantRenderTimer) return
+        assistantRenderTimer = setTimeout(function () {
+          assistantRenderTimer = null
+          renderAssistant(false)
+        }, 200)
+      }
+
+      function renderAssistant(immediate) {
+        if (immediate && assistantRenderTimer) {
+          clearTimeout(assistantRenderTimer)
+          assistantRenderTimer = null
+        }
+        var wrap = $('assistant')
+        var changed = false
+        assistantItems.slice(-10).forEach(function (it) {
+          if (!it.el) {
+            var el = document.createElement('div')
+            el.className = 'qa streaming'
+            var q = document.createElement('div')
+            q.className = 'q'
+            q.textContent = '🎙 ' + it.question
+            var a = document.createElement('div')
+            a.className = 'a'
+            el.appendChild(q)
+            el.appendChild(a)
+            wrap.appendChild(el)
+            it.el = el
+            it.renderedLen = -1
+            changed = true
+          }
+          if (it.renderedLen !== it.answer.length) {
+            var aEl = it.el.querySelector('.a')
+            if (it.answer) {
+              aEl.innerHTML = sanitize(markdownToHtml(it.answer))
+            } else if (!it.complete) {
+              aEl.innerHTML =
+                '<div id="think-note"><span class="spin"></span>正在思考，稍等…</div>'
+            } else {
+              aEl.innerHTML = ''
+            }
+            it.renderedLen = it.answer.length
+            changed = true
+          }
+          if (it.complete && it.el.classList.contains('streaming')) {
+            it.el.classList.remove('streaming')
+            changed = true
+          }
+        })
+        wrap.hidden = assistantItems.length === 0
+        if (changed && !userScrolled) {
+          content.scrollTop = content.scrollHeight
+        }
+      }
+
+      $('btn-assistant').addEventListener('click', function () {
+        send({ type: 'toggle-interview-assistant' })
+      })
+      $('pure-assistant').addEventListener('click', function () {
+        send({ type: 'toggle-interview-assistant' })
+      })
+
+      // ---- Click-capture mode cycle (off → double → single, server echoes) ----
+      var MODE_LABELS = { off: '关', double: '双击', single: '单击' }
+
+      function applyDblClick() {
+        var label = MODE_LABELS[captureMode] || '关'
+        $('btn-dblclick').textContent = '🖱 截屏:' + label
+        $('btn-dblclick').classList.toggle('thinking-on', captureMode !== 'off')
+        $('pure-dblclick').textContent = '🖱 ' + label
+        $('pure-dblclick').classList.toggle('thinking-on', captureMode !== 'off')
+      }
+
+      $('btn-dblclick').addEventListener('click', function () {
+        send({ type: 'toggle-double-click' })
+      })
+      $('pure-dblclick').addEventListener('click', function () {
+        send({ type: 'toggle-double-click' })
       })
       $('btn-show-window').addEventListener('click', function () {
         send({ type: 'toggle-window' })
