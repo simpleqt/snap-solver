@@ -13,6 +13,7 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     strategy:
+      fail-fast: false
       matrix:
         os: [windows-latest, macos-latest]
 
@@ -52,10 +53,10 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           draft: true
+          overwrite_files: true
           files: |
-            dist/**/interview-coder-cn-*.dmg
-            dist/**/interview-coder-cn-*.exe
-            dist/**/latest-mac.yml
-            dist/**/latest-windows.yml
+            dist/**/snap-solver-*.exe
+            dist/**/snap-solver-*.dmg
+            dist/**/latest*.yml
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
