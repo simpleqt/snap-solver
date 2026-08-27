@@ -1,4 +1,4 @@
-import { streamText, type ModelMessage } from 'ai'
+import { streamText, generateText, type ModelMessage } from 'ai'
 import { createOpenAI } from '@ai-sdk/openai'
 import { settings, AppSettings } from './settings'
 
@@ -22,7 +22,8 @@ function getModel(_settings: AppSettings) {
 }
 
 function createOpenAIProvider() {
-  const isDashScope = settings.apiBaseURL.includes('aliyuncs.com') || settings.apiBaseURL.includes('dashscope')
+  const isDashScope =
+    settings.apiBaseURL.includes('aliyuncs.com') || settings.apiBaseURL.includes('dashscope')
 
   return createOpenAI({
     baseURL: settings.apiBaseURL,
@@ -114,7 +115,7 @@ function transformMessages(messages: any[]) {
 export function getSolutionStream(messages: ModelMessage[], abortSignal?: AbortSignal) {
   const modelName = getModel(settings)
   const systemPrompt = getSystemPrompt()
-  
+
   console.log('API Request Detail:', {
     baseURL: settings.apiBaseURL,
     model: modelName,
@@ -125,12 +126,10 @@ export function getSolutionStream(messages: ModelMessage[], abortSignal?: AbortS
   const openai = createOpenAIProvider()
 
   // For DashScope multimodal, it's often safer to include system prompt as the first message
-  const isDashScope = settings.apiBaseURL.includes('aliyuncs.com') || settings.apiBaseURL.includes('dashscope')
-  const finalMessages = isDashScope 
-    ? [
-        { role: 'system', content: systemPrompt },
-        ...transformMessages(messages)
-      ]
+  const isDashScope =
+    settings.apiBaseURL.includes('aliyuncs.com') || settings.apiBaseURL.includes('dashscope')
+  const finalMessages = isDashScope
+    ? [{ role: 'system', content: systemPrompt }, ...transformMessages(messages)]
     : transformMessages(messages)
 
   const { textStream } = streamText({
@@ -172,12 +171,10 @@ export function getFollowUpStream(
     }
   ]
 
-  const isDashScope = settings.apiBaseURL.includes('aliyuncs.com') || settings.apiBaseURL.includes('dashscope')
-  const finalMessages = isDashScope 
-    ? [
-        { role: 'system', content: systemPrompt },
-        ...transformMessages(updatedMessages)
-      ]
+  const isDashScope =
+    settings.apiBaseURL.includes('aliyuncs.com') || settings.apiBaseURL.includes('dashscope')
+  const finalMessages = isDashScope
+    ? [{ role: 'system', content: systemPrompt }, ...transformMessages(updatedMessages)]
     : transformMessages(updatedMessages)
 
   const { textStream } = streamText({
@@ -200,12 +197,10 @@ export function getGeneralStream(messages: ModelMessage[], abortSignal?: AbortSi
   )
   const openai = createOpenAIProvider()
 
-  const isDashScope = settings.apiBaseURL.includes('aliyuncs.com') || settings.apiBaseURL.includes('dashscope')
-  const finalMessages = isDashScope 
-    ? [
-        { role: 'system', content: systemPrompt },
-        ...transformMessages(messages)
-      ]
+  const isDashScope =
+    settings.apiBaseURL.includes('aliyuncs.com') || settings.apiBaseURL.includes('dashscope')
+  const finalMessages = isDashScope
+    ? [{ role: 'system', content: systemPrompt }, ...transformMessages(messages)]
     : transformMessages(messages)
 
   const { textStream } = streamText({
@@ -219,4 +214,45 @@ export function getGeneralStream(messages: ModelMessage[], abortSignal?: AbortSi
     }
   })
   return textStream
+}
+
+/**
+ * Real-time interview assistant: text-only answer stream for a detected
+ * interviewer question. Small token budget keeps answers snappy.
+ */
+export function getInterviewAnswerStream(messages: ModelMessage[], abortSignal?: AbortSignal) {
+  const openai = createOpenAIProvider()
+  const { textStream } = streamText({
+    model: openai.chat(getModel(settings)),
+    maxOutputTokens: 4000,
+    messages,
+    abortSignal,
+    onError: (err) => {
+      throw err.error ?? err
+    }
+  })
+  return textStream
+}
+
+/**
+ * One-shot background call: compress older interview Q&A pairs into a short
+ * running summary so long sessions stay within a small context window.
+ */
+export async function compressInterviewHistory(
+  pairs: { question: string; answer: string }[],
+  previousSummary: string
+): Promise<string> {
+  const transcript = pairs.map((p) => `面试官：${p.question}\n回答：${p.answer}`).join('\n\n')
+  const openai = createOpenAIProvider()
+  const { text } = await generateText({
+    model: openai.chat(getModel(settings)),
+    maxOutputTokens: 1000,
+    messages: [
+      {
+        role: 'user',
+        content: `将下面的面试问答历史压缩成要点摘要（300字以内），保留：考察的技术点、双方的关键结论、未解决的问题。如有此前的旧摘要，把它的信息合并进来，输出最终的新摘要正文，不要任何前后缀。\n\n旧摘要：\n${previousSummary || '（无）'}\n\n问答历史：\n${transcript}`
+      }
+    ]
+  })
+  return text.trim()
 }

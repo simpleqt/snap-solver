@@ -12,6 +12,41 @@ let taskStarted = false
 let accumulatedText = ''
 let currentPartial = ''
 
+// Subscriptions for downstream consumers (interview assistant) without
+// creating import cycles
+type SentenceListener = (text: string, sentenceEnd: boolean) => void
+type ActiveListener = (active: boolean) => void
+const sentenceListeners: SentenceListener[] = []
+const activeListeners: ActiveListener[] = []
+
+export function onTranscriptionSentence(listener: SentenceListener): void {
+  sentenceListeners.push(listener)
+}
+
+export function onTranscriptionActive(listener: ActiveListener): void {
+  activeListeners.push(listener)
+}
+
+function notifySentence(text: string, sentenceEnd: boolean) {
+  for (const listener of sentenceListeners) {
+    try {
+      listener(text, sentenceEnd)
+    } catch (e) {
+      console.error('Transcription sentence listener error:', e)
+    }
+  }
+}
+
+function notifyActive(active: boolean) {
+  for (const listener of activeListeners) {
+    try {
+      listener(active)
+    } catch (e) {
+      console.error('Transcription active listener error:', e)
+    }
+  }
+}
+
 function sendToRenderer(channel: string, ...args: unknown[]) {
   const mainWindow = global.mainWindow
   if (mainWindow && !mainWindow.isDestroyed()) {
@@ -44,6 +79,7 @@ function cleanup() {
   taskId = null
   isTranscribing = false
   taskStarted = false
+  notifyActive(false)
 }
 
 function startTranscription(apiKey: string) {
@@ -52,6 +88,7 @@ function startTranscription(apiKey: string) {
   cleanup()
   isTranscribing = true
   taskId = randomUUID()
+  notifyActive(true)
 
   ws = new WebSocket(WS_URL, {
     headers: { Authorization: `bearer ${apiKey}` }
@@ -63,10 +100,7 @@ function startTranscription(apiKey: string) {
   wsConnectTimer = setTimeout(() => {
     if (ws && ws.readyState === WebSocket.CONNECTING) {
       console.error('Transcription WebSocket connection timed out')
-      sendToRenderer(
-        'transcription-error',
-        '连接百炼语音服务超时，请检查网络或 API Key 是否正确'
-      )
+      sendToRenderer('transcription-error', '连接百炼语音服务超时，请检查网络或 API Key 是否正确')
       cleanup()
       sendToRenderer('transcription-stopped')
     }
@@ -123,6 +157,8 @@ function startTranscription(apiKey: string) {
         } else {
           currentPartial = text
         }
+
+        notifySentence(text, sentenceEnd)
 
         sendToRenderer('transcription-text', {
           text: getTranscriptionText(),
