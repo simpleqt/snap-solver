@@ -11,6 +11,7 @@ import { AppStatusBar } from './AppStatusBar'
 import { PrerequisitesChecker } from './PrerequisitesChecker'
 import { TranscriptionBar } from './TranscriptionBar'
 import { InterviewAssistantPanel } from './InterviewAssistantPanel'
+import { TransparentBar } from './TransparentBar'
 
 export default function CoderPage() {
   const { opacity, dashscopeApiKey, answerFontColor, transparentAnswerMode } = useSettingsStore()
@@ -20,11 +21,13 @@ export default function CoderPage() {
   const { setErrorMessage } = useSolutionStore()
 
   useEffect(() => {
-    document.body.style.opacity = opacity.toString()
+    // Transparent answer mode always renders fully opaque: the window-level
+    // opacity slider would otherwise make code blocks see-through too
+    document.body.style.opacity = transparentAnswerMode ? '1' : opacity.toString()
     return () => {
       document.body.style.opacity = ''
     }
-  }, [opacity])
+  }, [opacity, transparentAnswerMode])
 
   useEffect(() => {
     document.documentElement.style.setProperty('--answer-color', answerFontColor)
@@ -151,6 +154,7 @@ export default function CoderPage() {
   return (
     <div className="relative h-screen">
       {!transparentAnswerMode && <AppHeader />}
+      {transparentAnswerMode && <TransparentBar />}
       <InterviewAssistantPanel />
       <AppContent />
       <TranscriptionBar />

@@ -40,14 +40,24 @@ body.transparent-answer #app-content {
   @apply bg-transparent;
   height: 100vh;
 }
-body.transparent-answer #app-content .prose {
-  text-shadow:
-    0 0 6px rgba(0, 0, 0, 0.9),
-    0 1px 3px rgba(0, 0, 0, 0.8);
+/* Code renders exactly like surrounding text: no plate, answer color only */
+body.transparent-answer #app-content pre {
+  background: transparent;
+  border: none;
+  padding: 0;
 }
-body.transparent-answer #app-content pre,
-body.transparent-answer #app-content pre code {
-  text-shadow: none;
+body.transparent-answer #app-content pre code,
+body.transparent-answer #app-content pre code span,
+body.transparent-answer #app-content :not(pre) > code {
+  background: transparent;
+  color: var(--answer-color);
+}
+/* No visible scrollbars in transparent mode (scrolling still works) */
+body.transparent-answer * {
+  scrollbar-width: none;
+}
+body.transparent-answer *::-webkit-scrollbar {
+  display: none;
 }
 
 .transcription-scroll {
