@@ -21,6 +21,13 @@
   @apply h-[calc(100vh-36px)] overflow-y-auto bg-gray-500;
 }
 
+/* Wrap long code lines instead of horizontal scrolling */
+#app-content pre {
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-x: hidden;
+}
+
 /* Answer font color (set from settings via --answer-color) */
 #app-content .prose {
   --tw-prose-body: var(--answer-color, #f8fafc);
