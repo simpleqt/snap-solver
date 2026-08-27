@@ -192,6 +192,50 @@ const api = {
   },
   removeMobileServerStatusListener: () => {
     ipcRenderer.removeAllListeners('mobile-server-status')
+  },
+
+  // Real-time interview assistant
+  onInterviewAssistantAudio: (callback: (active: boolean) => void) => {
+    ipcRenderer.on('interview-assistant-audio', (_event, active) => callback(active))
+  },
+  removeInterviewAssistantAudioListener: () => {
+    ipcRenderer.removeAllListeners('interview-assistant-audio')
+  },
+  onAssistantQuestion: (callback: (data: { id: number; question: string }) => void) => {
+    ipcRenderer.on('assistant-question', (_event, data) => callback(data))
+  },
+  removeAssistantQuestionListener: () => {
+    ipcRenderer.removeAllListeners('assistant-question')
+  },
+  onAssistantAnswerChunk: (callback: (data: { id: number; chunk: string }) => void) => {
+    ipcRenderer.on('assistant-answer-chunk', (_event, data) => callback(data))
+  },
+  removeAssistantAnswerChunkListener: () => {
+    ipcRenderer.removeAllListeners('assistant-answer-chunk')
+  },
+  onAssistantAnswerComplete: (callback: (data: { id: number }) => void) => {
+    ipcRenderer.on('assistant-answer-complete', (_event, data) => callback(data))
+  },
+  removeAssistantAnswerCompleteListener: () => {
+    ipcRenderer.removeAllListeners('assistant-answer-complete')
+  },
+  onAssistantAnswerError: (callback: (data: { id: number; message: string }) => void) => {
+    ipcRenderer.on('assistant-answer-error', (_event, data) => callback(data))
+  },
+  removeAssistantAnswerErrorListener: () => {
+    ipcRenderer.removeAllListeners('assistant-answer-error')
+  },
+  onAssistantState: (callback: (data: { enabled: boolean }) => void) => {
+    ipcRenderer.on('assistant-state', (_event, data) => callback(data))
+  },
+  removeAssistantStateListener: () => {
+    ipcRenderer.removeAllListeners('assistant-state')
+  },
+  onAssistantListening: (callback: (data: { text: string; partial?: boolean }) => void) => {
+    ipcRenderer.on('assistant-listening', (_event, data) => callback(data))
+  },
+  removeAssistantListeningListener: () => {
+    ipcRenderer.removeAllListeners('assistant-listening')
   }
 }
 

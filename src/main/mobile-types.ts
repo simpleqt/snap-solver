@@ -25,6 +25,14 @@ export interface MobileServerInfo {
   error: string | null
 }
 
+/** One interviewer question + its (possibly streaming) suggested answer */
+export interface InterviewQAItem {
+  id: number
+  question: string
+  answer: string
+  complete: boolean
+}
+
 /**
  * Hooks into desktop-side logic (window control, stream control, screenshot
  * capture), registered by shortcuts.ts to keep the import graph acyclic.
@@ -39,4 +47,8 @@ export interface MobileController {
   /** Phone-initiated capture: takes a screenshot without any desktop input */
   takeScreenshot: () => void | Promise<void>
   appendScreenshot: () => void | Promise<void>
+  /** Real-time interview assistant (auto answer from live transcription) */
+  toggleInterviewAssistant: () => void
+  /** Global click-to-screenshot mode cycle (off → double → single) */
+  cycleClickCaptureMode: () => void
 }

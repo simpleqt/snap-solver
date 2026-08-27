@@ -11,6 +11,11 @@ export function registerSettingsChangeHook(hook: SettingsChangeHook): void {
   settingsChangeHooks.push(hook)
 }
 
+/** Fire registered hooks; also used by in-process toggles (phone commands etc.). */
+export function notifySettingsChange(changed: Record<string, unknown>): void {
+  settingsChangeHooks.forEach((hook) => hook(changed))
+}
+
 ipcMain.handle('getAppSettings', () => {
   return settings
 })
@@ -49,7 +54,7 @@ export const settings = {
   apiKey: process.env.API_KEY || '',
   model: process.env.MODEL || '',
   customPrompt: '',
-  screenshotAutoSave: false,
+  screenshotAutoSave: true,
   screenshotDir: '',
   dashscopeApiKey: process.env.DASHSCOPE_API_KEY || '',
   hideDockIcon: true,
@@ -59,7 +64,13 @@ export const settings = {
   mobileServerPort: 3170,
   mobilePairingToken: '',
   /** Session-level thinking toggle (phone 「深度思考」), read by ai.ts at request time */
-  enableThinking: false
+  enableThinking: false,
+  /** Real-time interview assistant: auto-answer detected interviewer questions */
+  interviewAssistantEnabled: false,
+  /** Global left-button click capture mode */
+  clickCaptureMode: 'off' as ClickCaptureMode
 }
 
 export type AppSettings = typeof settings
+
+export type ClickCaptureMode = 'off' | 'single' | 'double'

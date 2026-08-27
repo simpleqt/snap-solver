@@ -92,6 +92,12 @@ interface Settings {
   mobileDisplayEnabled: boolean
   mobileServerPort: number
   mobilePairingToken: string
+
+  /** Real-time interview assistant (auto-answer from live transcription) */
+  interviewAssistantEnabled: boolean
+
+  /** Global left-button click capture mode: off / double / single */
+  clickCaptureMode: 'off' | 'single' | 'double'
 }
 
 interface SettingsStore extends Settings {
@@ -115,7 +121,7 @@ const defaultSettings: Settings = {
 
   opacity: 0.8,
 
-  screenshotAutoSave: false,
+  screenshotAutoSave: true,
   screenshotDir: '',
 
   dashscopeApiKey: '',
@@ -127,7 +133,11 @@ const defaultSettings: Settings = {
 
   mobileDisplayEnabled: false,
   mobileServerPort: 3170,
-  mobilePairingToken: ''
+  mobilePairingToken: '',
+
+  interviewAssistantEnabled: false,
+
+  clickCaptureMode: 'off'
 }
 
 export const useSettingsStore = create<SettingsStore>()(
@@ -195,11 +205,15 @@ export const useSettingsStore = create<SettingsStore>()(
     }),
     {
       name: 'interview-coder-settings',
-      version: 8,
+      version: 9,
       migrate: (persisted, version) => {
         const state = persisted as Partial<Settings>
         // Drop the legacy codeLanguage field (language now lives in the prompt text)
         delete (state as Record<string, unknown>).codeLanguage
+        if (version < 9) {
+          // Screenshot auto-save becomes the default; flip existing installs on
+          state.screenshotAutoSave = true
+        }
         if (version < 8) {
           // Refresh the coding scene prompt with the new template for existing users
           state.scenes = (state.scenes ?? []).map((s) =>

@@ -81,6 +81,20 @@ export function setMobileController(c: MobileController) {
   controller = c
 }
 
+/** Extra init payload for phones connecting mid-session (interview assistant etc.) */
+const initExtraProviders: (() => Record<string, unknown>)[] = []
+
+export function setMobileInitExtra(provider: () => Record<string, unknown>): void {
+  initExtraProviders.push(provider)
+}
+
+function collectInitExtra(): Record<string, unknown> {
+  return initExtraProviders.reduce<Record<string, unknown>>(
+    (extra, provider) => ({ ...extra, ...provider() }),
+    {}
+  )
+}
+
 // Static assets are read once and cached in memory.
 let mobileHtmlCache: string | null = null
 let markedJsCache: Buffer | null = null
@@ -193,6 +207,12 @@ function handleClientMessage(ws: WebSocket, data: WebSocket.RawData) {
       // pushes the new activeSceneId back, which triggers the broadcast below
       sendToRenderer('switch-prompt-scene')
       break
+    case 'toggle-interview-assistant':
+      controller?.toggleInterviewAssistant()
+      break
+    case 'toggle-double-click':
+      controller?.cycleClickCaptureMode()
+      break
     case 'ping':
       ws.send(JSON.stringify({ type: 'pong' }))
       break
@@ -276,7 +296,9 @@ export async function startMobileServer(port: number, token: string): Promise<vo
         payload: {
           ...snapshot,
           enableThinking: settings.enableThinking,
-          sceneName: getCurrentSceneName()
+          sceneName: getCurrentSceneName(),
+          clickCapture: { mode: settings.clickCaptureMode },
+          ...collectInitExtra()
         }
       })
     )
@@ -400,6 +422,13 @@ registerSettingsChangeHook((changed) => {
 registerSettingsChangeHook((changed) => {
   if ('activeSceneId' in changed) {
     broadcastToMobile('scene-state', { sceneName: getCurrentSceneName() })
+  }
+})
+
+// Mirror helper toggles (click capture etc.) to all connected phones
+registerSettingsChangeHook((changed) => {
+  if ('clickCaptureMode' in changed) {
+    broadcastToMobile('double-click-state', { mode: settings.clickCaptureMode })
   }
 })
 

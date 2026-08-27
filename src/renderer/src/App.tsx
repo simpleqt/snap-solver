@@ -62,6 +62,18 @@ export default function App() {
     return () => window.api.removeSwitchPromptSceneListener()
   }, [])
 
+  // Mirror the interview assistant state (may be toggled from the phone);
+  // skip redundant sets to avoid a settings-push feedback loop
+  useEffect(() => {
+    const handleState = ({ enabled }: { enabled: boolean }) => {
+      if (useSettingsStore.getState().interviewAssistantEnabled !== enabled) {
+        useSettingsStore.getState().updateSetting('interviewAssistantEnabled', enabled)
+      }
+    }
+    window.api.onAssistantState(handleState)
+    return () => window.api.removeAssistantStateListener()
+  }, [])
+
   return (
     <>
       <HashRouter>

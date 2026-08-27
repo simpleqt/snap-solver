@@ -9,6 +9,10 @@ import { state } from './state'
 import { settings } from './settings'
 import { getTranscriptionText, clearTranscriptionText } from './transcription'
 import { emitSolutionEvent, setMobileController, type MobileSolutionEvent } from './mobile-server'
+import { toggleInterviewAssistant } from './interview-assistant'
+import { registerDoubleClickTrigger } from './mouse-double-click'
+import { notifySettingsChange } from './settings'
+import type { ClickCaptureMode } from './settings'
 
 /**
  * Extract meaningful error message from API errors
@@ -781,5 +785,18 @@ setMobileController({
   toggleMainWindow: () => callbacks.hideOrShowMainWindow(),
   sendFollowUp: (question) => handleFollowUpQuestion(question),
   takeScreenshot: () => callbacks.takeScreenshot(),
-  appendScreenshot: () => callbacks.appendScreenshot()
+  appendScreenshot: () => callbacks.appendScreenshot(),
+  toggleInterviewAssistant: () => toggleInterviewAssistant(),
+  cycleClickCaptureMode: () => {
+    // off → double → single → off
+    const order: ClickCaptureMode[] = ['off', 'double', 'single']
+    const index = order.indexOf(settings.clickCaptureMode)
+    settings.clickCaptureMode = order[(index + 1) % order.length]
+    // Runs the hook in mouse-double-click.ts (starts/stops the mouse hook)
+    // and triggers the mobile-state broadcast
+    notifySettingsChange({ clickCaptureMode: settings.clickCaptureMode })
+  }
 })
+
+// Global double-click capture shares the screenshot pipeline
+registerDoubleClickTrigger(() => callbacks.takeScreenshot())

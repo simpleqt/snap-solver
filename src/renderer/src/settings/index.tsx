@@ -14,6 +14,7 @@ import {
   Plus,
   RotateCcw,
   Smartphone,
+  MousePointerClick,
   X
 } from 'lucide-react'
 import QRCode from 'react-qr-code'
@@ -71,6 +72,8 @@ export default function SettingsPage() {
     mobileDisplayEnabled,
     mobileServerPort,
     mobilePairingToken,
+    interviewAssistantEnabled,
+    clickCaptureMode,
     updateSetting,
     setActiveScene,
     updateScenePrompt,
@@ -334,6 +337,71 @@ export default function SettingsPage() {
                 </SelectContent>
               </Select>
             </div>
+          </div>
+        </div>
+        {/* Interview Assistant Settings */}
+        <div className="bg-gray-300/80 rounded-lg p-6">
+          <h2 className="text-lg font-semibold mb-4 flex items-center">
+            <Mic className="h-5 w-5 mr-2" />
+            面试实时助手
+          </h2>
+
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium">
+                实时监听并自动回答
+                <span className="ml-2 text-xs font-light">
+                  持续监听面试官提问，自动识别问题并实时生成建议回答，无需按快捷键；也可在手机端开关
+                </span>
+              </label>
+              <Switch
+                className="scale-y-90"
+                checked={interviewAssistantEnabled}
+                onCheckedChange={(checked) => updateSetting('interviewAssistantEnabled', checked)}
+              />
+            </div>
+            <p className="text-xs font-light">
+              使用说明：依赖上方「语音转录」的百炼 API
+              Key；音频输入设备建议选择「系统音频」，只监听面试官说话，不会录到自己的声音。开启后电脑悬浮窗和手机端都会显示「问题
+              → 建议回答」时间线。
+            </p>
+          </div>
+        </div>
+        {/* Double Click Capture Settings */}
+        <div className="bg-gray-300/80 rounded-lg p-6">
+          <h2 className="text-lg font-semibold mb-4 flex items-center">
+            <MousePointerClick className="h-5 w-5 mr-2" />
+            双击截图
+          </h2>
+
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium">
+                鼠标左键点击触发截图
+                <span className="ml-2 text-xs font-light">
+                  屏幕任意位置点击/双击左键即可截屏解题
+                </span>
+              </label>
+              <Select
+                value={clickCaptureMode}
+                onValueChange={(val) =>
+                  updateSetting('clickCaptureMode', val as typeof clickCaptureMode)
+                }
+              >
+                <SelectTrigger className="w-60 bg-white">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="off">关闭（默认）</SelectItem>
+                  <SelectItem value="double">双击截屏</SelectItem>
+                  <SelectItem value="single">单击截屏</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <p className="text-xs font-light">
+              注意：开启后所有软件内的点击操作都会触发截图，可能影响正常操作（如选中文字），请按需开关。
+              {isMac && ' macOS 首次开启需在「系统设置 → 隐私与安全性 → 辅助功能」中授权本应用。'}
+            </p>
           </div>
         </div>
         <div className="bg-gray-300/80 rounded-lg p-6">
