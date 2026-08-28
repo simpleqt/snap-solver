@@ -5,7 +5,7 @@ import { applyContentProtection } from './main-window'
 import { takeScreenshot } from './take-screenshot'
 import { saveScreenshotToDisk } from './save-screenshot'
 import { getSolutionStream, getFollowUpStream, getGeneralStream } from './ai'
-import { state } from './state'
+import { state, notifyAppStateChange } from './state'
 import { settings } from './settings'
 import { getTranscriptionText, clearTranscriptionText } from './transcription'
 import { emitSolutionEvent, setMobileController, type MobileSolutionEvent } from './mobile-server'
@@ -508,6 +508,8 @@ const callbacks: Record<string, () => void> = {
     state.ignoreMouse = !state.ignoreMouse
     mainWindow.setIgnoreMouseEvents(state.ignoreMouse)
     mainWindow.webContents.send('sync-app-state', state)
+    // Wheel forwarding (wheel-forward.ts) activates on this change
+    notifyAppStateChange({ ignoreMouse: state.ignoreMouse })
   },
   pageUp: () => {
     const mainWindow = global.mainWindow

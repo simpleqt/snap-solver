@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { toast } from 'sonner'
 import { useSettingsStore } from '@/lib/store/settings'
 import { useAppStore } from '@/lib/store/app'
 import { useTranscriptionStore } from '@/lib/store/transcription'
@@ -65,10 +66,13 @@ export default function CoderPage() {
           return
         }
         try {
-          await startAudioCapture()
+          const mode = await startAudioCapture()
           await window.api.startTranscription(dashscopeApiKey)
           setIsTranscribing(true)
           setErrorMessage(null)
+          if (mode === 'microphone') {
+            toast.info('macOS 不支持捕获系统声音，正在使用麦克风收音')
+          }
         } catch (err) {
           console.error('Failed to start transcription:', err)
           stopAudioCapture()
@@ -129,10 +133,13 @@ export default function CoderPage() {
           return
         }
         try {
-          await startAudioCapture()
+          const mode = await startAudioCapture()
           await window.api.startTranscription(dashscopeApiKey)
           transcription.setIsTranscribing(true)
           assistantStartedCapture.current = true
+          if (mode === 'microphone') {
+            toast.info('macOS 不支持捕获系统声音，实时助手正在使用麦克风收音')
+          }
         } catch (err) {
           console.error('Failed to start interview assistant capture:', err)
           stopAudioCapture()

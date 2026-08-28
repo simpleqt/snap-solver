@@ -1,6 +1,7 @@
 import { systemPreferences } from 'electron'
 import { uIOhook } from 'uiohook-napi'
 import { settings, registerSettingsChangeHook, type ClickCaptureMode } from './settings'
+import { acquireGlobalMouse, releaseGlobalMouse } from './global-mouse-hook'
 
 /**
  * Global click-to-screenshot trigger: while enabled ('single' or 'double'),
@@ -71,7 +72,7 @@ function startHook(): void {
   }
   try {
     uIOhook.on('mousedown', handleMouseDown)
-    uIOhook.start()
+    acquireGlobalMouse()
     hookRunning = true
   } catch (error) {
     console.error('Failed to start mouse hook:', error)
@@ -84,7 +85,7 @@ function stopHook(): void {
   lastLeftDown = 0
   try {
     uIOhook.removeAllListeners('mousedown')
-    uIOhook.stop()
+    releaseGlobalMouse()
   } catch (error) {
     console.error('Failed to stop mouse hook:', error)
   }

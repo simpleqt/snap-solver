@@ -11,6 +11,11 @@ export function registerAppStateHook(hook: AppStateChangeHook): void {
   appStateChangeHooks.push(hook)
 }
 
+/** Fire registered hooks; also used by in-process mutations (shortcut callbacks). */
+export function notifyAppStateChange(changed: Record<string, unknown>): void {
+  appStateChangeHooks.forEach((hook) => hook(changed))
+}
+
 ipcMain.handle('updateAppState', (_event, _state) => {
   Object.assign(state, _state)
   appStateChangeHooks.forEach((hook) => hook(_state))

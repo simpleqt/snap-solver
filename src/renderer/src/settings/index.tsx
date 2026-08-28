@@ -374,7 +374,10 @@ export default function SettingsPage() {
             <div className="flex items-center justify-between">
               <label className="text-sm font-medium">
                 音频输入设备
-                <span className="ml-2 text-xs font-light">选择麦克风，留空则捕获系统音频</span>
+                <span className="ml-2 text-xs font-light">
+                  选择麦克风，留空则捕获系统音频
+                  {isMac && '；macOS 无法捕获系统声音，将自动使用麦克风'}
+                </span>
               </label>
               <Select
                 value={audioInputDeviceId || 'system'}

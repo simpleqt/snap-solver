@@ -1,4 +1,5 @@
 import { useSettingsStore } from '@/lib/store/settings'
+import { isMac } from '@/lib/utils/env'
 
 let mediaStream: MediaStream | null = null
 let audioContext: AudioContext | null = null
@@ -13,9 +14,9 @@ function downsampleAndSend(float32: Float32Array): void {
   window.api.sendTranscriptionAudioChunk(int16.buffer)
 }
 
-async function openMicrophoneStream(deviceId: string): Promise<MediaStream> {
+async function openMicrophoneStream(deviceId?: string): Promise<MediaStream> {
   return navigator.mediaDevices.getUserMedia({
-    audio: { deviceId: { exact: deviceId } },
+    audio: deviceId ? { deviceId: { exact: deviceId } } : true,
     video: false
   })
 }
@@ -29,19 +30,32 @@ async function openSystemAudioStream(): Promise<MediaStream> {
   return stream
 }
 
-export async function startAudioCapture(): Promise<void> {
+/**
+ * Start capturing microphone/system audio and stream 16 kHz PCM to main.
+ * Returns the capture mode actually used: Electron's loopback system audio
+ * is Windows-only, so macOS always falls back to the microphone.
+ */
+export async function startAudioCapture(): Promise<'system' | 'microphone'> {
   const { audioInputDeviceId, audioOutputDeviceId } = useSettingsStore.getState()
 
   let stream: MediaStream
-  if (audioInputDeviceId) {
+  let mode: 'system' | 'microphone'
+  if (isMac) {
+    // macOS: getDisplayMedia loopback yields a silent track — use microphone
+    stream = await openMicrophoneStream(audioInputDeviceId || undefined)
+    mode = 'microphone'
+  } else if (audioInputDeviceId) {
     try {
       stream = await openMicrophoneStream(audioInputDeviceId)
+      mode = 'microphone'
     } catch (err) {
       console.warn('Failed to open selected microphone, falling back to system audio:', err)
       stream = await openSystemAudioStream()
+      mode = 'system'
     }
   } else {
     stream = await openSystemAudioStream()
+    mode = 'system'
   }
 
   mediaStream = stream
@@ -66,6 +80,7 @@ export async function startAudioCapture(): Promise<void> {
   }
   source.connect(processor)
   processor.connect(audioContext.destination)
+  return mode
 }
 
 export function stopAudioCapture(): void {
