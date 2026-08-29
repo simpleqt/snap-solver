@@ -199,6 +199,9 @@ function handleClientMessage(ws: WebSocket, data: WebSocket.RawData) {
       break
     case 'toggle-thinking': {
       settings.enableThinking = !settings.enableThinking
+      // Keep the renderer store in sync too, or its next settings push would
+      // silently revert the phone's toggle
+      sendToRenderer('thinking-state', { enabled: settings.enableThinking })
       broadcastToMobile('thinking-state', { enabled: settings.enableThinking })
       break
     }
@@ -425,9 +428,10 @@ registerSettingsChangeHook((changed) => {
   }
 })
 
-// Mirror helper toggles (click capture etc.) to all connected phones
+// Mirror helper toggles (click capture etc.) to phones and the renderer
 registerSettingsChangeHook((changed) => {
   if ('clickCaptureMode' in changed) {
+    sendToRenderer('double-click-state', { mode: settings.clickCaptureMode })
     broadcastToMobile('double-click-state', { mode: settings.clickCaptureMode })
   }
 })

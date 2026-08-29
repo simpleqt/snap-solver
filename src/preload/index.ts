@@ -47,6 +47,28 @@ const api = {
     ipcRenderer.removeAllListeners('switch-prompt-scene')
   },
 
+  // Listen for provider profile switch shortcut
+  onSwitchProviderProfile: (callback: () => void) => {
+    ipcRenderer.on('switch-provider-profile', callback)
+  },
+  removeSwitchProviderProfileListener: () => {
+    ipcRenderer.removeAllListeners('switch-provider-profile')
+  },
+
+  // Mirror helper toggles that may be changed from the phone
+  onThinkingState: (callback: (data: { enabled: boolean }) => void) => {
+    ipcRenderer.on('thinking-state', (_event, data) => callback(data))
+  },
+  removeThinkingStateListener: () => {
+    ipcRenderer.removeAllListeners('thinking-state')
+  },
+  onClickCaptureState: (callback: (data: { mode: 'off' | 'single' | 'double' }) => void) => {
+    ipcRenderer.on('double-click-state', (_event, data) => callback(data))
+  },
+  removeClickCaptureStateListener: () => {
+    ipcRenderer.removeAllListeners('double-click-state')
+  },
+
   // Listen for screenshot events
   onScreenshotTaken: (callback: (screenshotData: string) => void) => {
     ipcRenderer.on('screenshot-taken', (_event, screenshotData) => {

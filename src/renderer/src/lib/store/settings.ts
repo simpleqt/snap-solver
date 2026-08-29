@@ -103,6 +103,37 @@ interface Settings {
 
   /** Global left-button click capture mode: off / double / single */
   clickCaptureMode: 'off' | 'single' | 'double'
+
+  /** Deep-thinking flag (synced to main, read by ai.ts at request time) */
+  enableThinking: boolean
+
+  /** Saved provider profiles for one-key switching (URL/Key/model/thinking) */
+  providerProfiles: ProviderProfile[]
+  activeProviderId: string
+}
+
+export interface ProviderProfile {
+  id: string
+  name: string
+  apiBaseURL: string
+  apiKey: string
+  model: string
+  enableThinking: boolean
+}
+
+function providerNameFromURL(url: string): string {
+  if (url.includes('deepseek.com')) return 'DeepSeek'
+  if (url.includes('siliconflow')) return '硅基流动'
+  if (url.includes('aliyuncs.com') || url.includes('dashscope')) return '阿里百炼'
+  if (url.includes('bigmodel')) return '智谱 GLM'
+  if (url.includes('moonshot')) return 'Kimi'
+  if (url.includes('openrouter')) return 'OpenRouter'
+  if (url.includes('openai.com')) return 'OpenAI'
+  try {
+    return new URL(url).hostname
+  } catch {
+    return '自定义'
+  }
 }
 
 interface SettingsStore extends Settings {
@@ -113,6 +144,10 @@ interface SettingsStore extends Settings {
   updateScenePrompt: (id: string, prompt: string) => void
   addScene: (name: string) => string
   removeScene: (id: string) => void
+  applyProviderProfile: (id: string) => ProviderProfile | undefined
+  saveProviderProfile: (asNew?: boolean) => ProviderProfile
+  deleteProviderProfile: (id: string) => void
+  cycleProviderProfile: () => ProviderProfile | null
 }
 
 const defaultSettings: Settings = {
@@ -145,7 +180,12 @@ const defaultSettings: Settings = {
 
   interviewAssistantEnabled: false,
 
-  clickCaptureMode: 'off'
+  clickCaptureMode: 'off',
+
+  enableThinking: false,
+
+  providerProfiles: [],
+  activeProviderId: ''
 }
 
 export const useSettingsStore = create<SettingsStore>()(
@@ -209,6 +249,50 @@ export const useSettingsStore = create<SettingsStore>()(
             customPrompt: composeCustomPrompt(scenes, activeSceneId)
           }
         })
+      },
+      applyProviderProfile: (id) => {
+        const profile = get().providerProfiles.find((p) => p.id === id)
+        if (!profile) return undefined
+        set({
+          activeProviderId: id,
+          apiBaseURL: profile.apiBaseURL,
+          apiKey: profile.apiKey,
+          model: profile.model,
+          enableThinking: profile.enableThinking
+        })
+        return profile
+      },
+      saveProviderProfile: (asNew = false) => {
+        const s = get()
+        const existing = !asNew ? s.providerProfiles.find((p) => p.id === s.activeProviderId) : null
+        const profile: ProviderProfile = {
+          id: existing?.id ?? `provider-${Date.now()}`,
+          name: existing?.name ?? providerNameFromURL(s.apiBaseURL),
+          apiBaseURL: s.apiBaseURL,
+          apiKey: s.apiKey,
+          model: s.model,
+          enableThinking: s.enableThinking
+        }
+        set((state) => ({
+          providerProfiles: existing
+            ? state.providerProfiles.map((p) => (p.id === existing.id ? profile : p))
+            : [...state.providerProfiles, profile],
+          activeProviderId: profile.id
+        }))
+        return profile
+      },
+      deleteProviderProfile: (id) => {
+        set((state) => ({
+          providerProfiles: state.providerProfiles.filter((p) => p.id !== id),
+          activeProviderId: state.activeProviderId === id ? '' : state.activeProviderId
+        }))
+      },
+      cycleProviderProfile: () => {
+        const profiles = get().providerProfiles
+        if (profiles.length === 0) return null
+        const index = profiles.findIndex((p) => p.id === get().activeProviderId)
+        const next = profiles[(index + 1) % profiles.length]
+        return get().applyProviderProfile(next.id) ?? null
       }
     }),
     {

@@ -62,6 +62,39 @@ export default function App() {
     return () => window.api.removeSwitchPromptSceneListener()
   }, [])
 
+  // Cycle saved provider profiles (URL/Key/model/thinking per provider)
+  useEffect(() => {
+    const handleSwitch = () => {
+      const profile = useSettingsStore.getState().cycleProviderProfile()
+      if (profile) {
+        toast.info(`已切换供应商：${profile.name}（${profile.model}）`)
+      } else {
+        toast.info('尚未保存供应商配置，可在「设置 → AI 设置」保存当前配置为方案')
+      }
+    }
+    window.api.onSwitchProviderProfile(handleSwitch)
+    return () => window.api.removeSwitchProviderProfileListener()
+  }, [])
+
+  // Mirror helper toggles that may be changed from the phone; skip redundant
+  // sets to avoid a settings-push feedback loop
+  useEffect(() => {
+    window.api.onThinkingState(({ enabled }) => {
+      if (useSettingsStore.getState().enableThinking !== enabled) {
+        useSettingsStore.getState().updateSetting('enableThinking', enabled)
+      }
+    })
+    window.api.onClickCaptureState(({ mode }) => {
+      if (useSettingsStore.getState().clickCaptureMode !== mode) {
+        useSettingsStore.getState().updateSetting('clickCaptureMode', mode)
+      }
+    })
+    return () => {
+      window.api.removeThinkingStateListener()
+      window.api.removeClickCaptureStateListener()
+    }
+  }, [])
+
   // Mirror the interview assistant state (may be toggled from the phone);
   // skip redundant sets to avoid a settings-push feedback loop
   useEffect(() => {

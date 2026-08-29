@@ -570,6 +570,13 @@ const callbacks: Record<string, () => void> = {
     const mainWindow = global.mainWindow
     if (!mainWindow || mainWindow.isDestroyed()) return
     mainWindow.webContents.send('switch-prompt-scene')
+  },
+
+  // Same pattern for provider profiles (URL/Key/model per provider)
+  switchProviderProfile: () => {
+    const mainWindow = global.mainWindow
+    if (!mainWindow || mainWindow.isDestroyed()) return
+    mainWindow.webContents.send('switch-provider-profile')
   }
 }
 

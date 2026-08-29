@@ -130,7 +130,13 @@ export default function SettingsPage() {
     mobilePairingToken,
     interviewAssistantEnabled,
     clickCaptureMode,
+    enableThinking,
+    providerProfiles,
+    activeProviderId,
     updateSetting,
+    applyProviderProfile,
+    saveProviderProfile,
+    deleteProviderProfile,
     setActiveScene,
     updateScenePrompt,
     addScene,
@@ -245,6 +251,105 @@ export default function SettingsPage() {
           </h2>
 
           <div className="space-y-4">
+            <div>
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium">
+                  供应商配置方案
+                  <span className="ml-2 text-xs font-light">
+                    保存每家的地址 / Key / 模型 / 思考开关，点击快速切换（快捷键 Alt+O）
+                  </span>
+                </label>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    title={activeProviderId ? '用当前配置覆盖选中的方案' : '把当前配置保存为新方案'}
+                    onClick={() => {
+                      const p = saveProviderProfile(false)
+                      toast.success(
+                        activeProviderId ? `已更新方案：${p.name}` : `已保存新方案：${p.name}`
+                      )
+                    }}
+                  >
+                    保存当前
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    title="把当前配置另存为一个新方案"
+                    onClick={() => {
+                      const p = saveProviderProfile(true)
+                      toast.success(`已另存新方案：${p.name}`)
+                    }}
+                  >
+                    另存新方案
+                  </Button>
+                </div>
+              </div>
+              {providerProfiles.length > 0 ? (
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  {providerProfiles.map((p) => (
+                    <div
+                      key={p.id}
+                      className={cn(
+                        'group flex items-center rounded-full border text-sm transition-colors cursor-pointer select-none',
+                        p.id === activeProviderId
+                          ? 'bg-blue-600 border-blue-600 text-white'
+                          : 'bg-white border-gray-300 hover:border-blue-400'
+                      )}
+                      title={`${p.apiBaseURL} · ${p.model}${p.enableThinking ? ' · 思考开' : ''}`}
+                      onClick={() => {
+                        const applied = applyProviderProfile(p.id)
+                        if (applied) {
+                          toast.info(`已切换供应商：${applied.name}（${applied.model}）`)
+                        }
+                      }}
+                    >
+                      <span className="py-1 pl-3 pr-1">
+                        {p.name}
+                        <span
+                          className={cn(
+                            'ml-1.5 text-xs',
+                            p.id === activeProviderId ? 'text-blue-100' : 'text-gray-500'
+                          )}
+                        >
+                          {p.model}
+                        </span>
+                      </span>
+                      <button
+                        className="mr-1.5 p-0.5 rounded-full opacity-60 hover:opacity-100 hover:bg-black/10"
+                        title="删除该方案"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          deleteProviderProfile(p.id)
+                        }}
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="mt-1.5 text-xs font-light text-gray-600">
+                  还没有保存的方案。配置好下方信息后点「保存当前」，之后即可一键切换或用快捷键循环切换。
+                </p>
+              )}
+            </div>
+
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium">
+                深度思考
+                <span className="ml-2 text-xs font-light">
+                  开启后模型先推理再作答（更慢更准），会随配置方案一起保存
+                </span>
+              </label>
+              <Switch
+                className="scale-y-90"
+                checked={enableThinking}
+                onCheckedChange={(checked) => updateSetting('enableThinking', checked)}
+              />
+            </div>
+
             <div className="flex items-center justify-between">
               <label className="text-sm font-medium">
                 模型服务商

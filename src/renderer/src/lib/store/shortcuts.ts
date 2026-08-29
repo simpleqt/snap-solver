@@ -66,6 +66,11 @@ const defaultShortcuts: Record<string, Omit<Shortcut, 'defaultKey'>> = {
     key: `${platformAlt}+P`,
     category: 'Screenshot & AI'
   },
+  switchProviderProfile: {
+    action: 'switchProviderProfile',
+    key: `${platformAlt}+O`,
+    category: 'Screenshot & AI'
+  },
   toggleTranscription: {
     action: 'toggleTranscription',
     key: `${platformAlt}+T`,
