@@ -15,6 +15,7 @@ import {
   RotateCcw,
   Smartphone,
   MousePointerClick,
+  RefreshCw,
   X
 } from 'lucide-react'
 import QRCode from 'react-qr-code'
@@ -133,6 +134,7 @@ export default function SettingsPage() {
     enableThinking,
     providerProfiles,
     activeProviderId,
+    autoUpdateEnabled,
     updateSetting,
     applyProviderProfile,
     saveProviderProfile,
@@ -150,6 +152,52 @@ export default function SettingsPage() {
 
   const [audioDevices, setAudioDevices] = useState<MediaDeviceInfo[]>([])
   const [mobileInfo, setMobileInfo] = useState<MobileServerInfo | null>(null)
+  const [updateInfo, setUpdateInfo] = useState<{
+    status: string
+    currentVersion: string
+    version?: string
+    progress?: number
+    message?: string
+  } | null>(null)
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        setUpdateInfo(await window.api.getUpdateStatus())
+      } catch (err) {
+        console.error('Failed to get update status:', err)
+      }
+    }
+    load()
+    window.api.onUpdateStatus(setUpdateInfo)
+    return () => {
+      window.api.removeUpdateStatusListener()
+    }
+  }, [])
+
+  const updateStatusText =
+    updateInfo?.status === 'checking'
+      ? '正在检查更新…'
+      : updateInfo?.status === 'downloading'
+        ? `正在下载 v${updateInfo.version ?? ''}（${updateInfo.progress ?? 0}%）`
+        : updateInfo?.status === 'downloaded'
+          ? `新版本 v${updateInfo.version ?? ''} 已就绪，退出时自动安装`
+          : updateInfo?.status === 'not-available'
+            ? '已是最新版本'
+            : updateInfo?.status === 'error'
+              ? '检查更新失败'
+              : updateInfo?.status === 'unsupported'
+                ? 'macOS 暂不支持自动更新，请手动下载 dmg'
+                : ''
+
+  const updateButtonText =
+    updateInfo?.status === 'checking'
+      ? '检查中…'
+      : updateInfo?.status === 'downloading'
+        ? `下载中 ${updateInfo.progress ?? 0}%`
+        : updateInfo?.status === 'downloaded'
+          ? '重启并更新'
+          : '立即检查'
 
   const activeScene = scenes.find((s) => s.id === activeSceneId)
   const deletingScene = scenes.find((s) => s.id === sceneToDelete)
@@ -1002,6 +1050,52 @@ export default function SettingsPage() {
                   onCheckedChange={(checked) => updateSetting('hideDockIcon', checked)}
                 />
               </div>
+            )}
+          </div>
+        </div>
+
+        {/* Version & Update */}
+        <div className="bg-gray-300/80 rounded-lg p-6">
+          <h2 className="text-lg font-semibold mb-4 flex items-center">
+            <RefreshCw className="h-5 w-5 mr-2" />
+            版本与更新
+          </h2>
+
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium">
+                自动更新
+                <span className="ml-2 text-xs font-light">
+                  自动检查 GitHub 最新版本并后台下载，退出时自动覆盖安装到当前目录（Windows）
+                </span>
+              </label>
+              <Switch
+                className="scale-y-90"
+                checked={autoUpdateEnabled}
+                onCheckedChange={(checked) => updateSetting('autoUpdateEnabled', checked)}
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium">
+                当前版本 v{updateInfo?.currentVersion ?? '--'}
+                <span className="ml-2 text-xs font-light">{updateStatusText}</span>
+              </label>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={updateInfo?.status === 'checking' || updateInfo?.status === 'downloading'}
+                onClick={async () => {
+                  const st = await window.api.checkForUpdate()
+                  if (st.status === 'downloaded') {
+                    await window.api.installUpdate()
+                  }
+                }}
+              >
+                {updateButtonText}
+              </Button>
+            </div>
+            {updateInfo?.status === 'error' && updateInfo.message && (
+              <p className="text-xs text-red-600 break-all">{updateInfo.message}</p>
             )}
           </div>
         </div>

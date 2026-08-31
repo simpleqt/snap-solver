@@ -69,6 +69,25 @@ const api = {
     ipcRenderer.removeAllListeners('double-click-state')
   },
 
+  // Auto-update (GitHub Releases)
+  getUpdateStatus: () => ipcRenderer.invoke('get-update-status'),
+  checkForUpdate: () => ipcRenderer.invoke('check-update'),
+  installUpdate: () => ipcRenderer.invoke('install-update'),
+  onUpdateStatus: (
+    callback: (data: {
+      status: string
+      currentVersion: string
+      version?: string
+      progress?: number
+      message?: string
+    }) => void
+  ) => {
+    ipcRenderer.on('update-status', (_event, data) => callback(data))
+  },
+  removeUpdateStatusListener: () => {
+    ipcRenderer.removeAllListeners('update-status')
+  },
+
   // Listen for screenshot events
   onScreenshotTaken: (callback: (screenshotData: string) => void) => {
     ipcRenderer.on('screenshot-taken', (_event, screenshotData) => {

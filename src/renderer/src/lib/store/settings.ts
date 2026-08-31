@@ -110,6 +110,9 @@ interface Settings {
   /** Saved provider profiles for one-key switching (URL/Key/model/thinking) */
   providerProfiles: ProviderProfile[]
   activeProviderId: string
+
+  /** Auto-update from GitHub Releases */
+  autoUpdateEnabled: boolean
 }
 
 export interface ProviderProfile {
@@ -185,7 +188,9 @@ const defaultSettings: Settings = {
   enableThinking: false,
 
   providerProfiles: [],
-  activeProviderId: ''
+  activeProviderId: '',
+
+  autoUpdateEnabled: true
 }
 
 export const useSettingsStore = create<SettingsStore>()(

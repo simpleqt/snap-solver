@@ -107,6 +107,22 @@ export default function App() {
     return () => window.api.removeAssistantStateListener()
   }, [])
 
+  // Auto-update notifications (quiet toasts instead of blocking dialogs)
+  useEffect(() => {
+    window.api.onUpdateStatus((info) => {
+      if (info.status === 'downloaded') {
+        toast.success(`新版本 v${info.version ?? ''} 已就绪，退出应用时自动安装`, {
+          description: '可到「设置 → 版本与更新」立即重启更新'
+        })
+      } else if (info.status === 'downloading' && (info.progress ?? 0) === 0) {
+        toast.info(`发现新版本 v${info.version ?? ''}，正在后台下载…`)
+      }
+    })
+    return () => {
+      window.api.removeUpdateStatusListener()
+    }
+  }, [])
+
   return (
     <>
       <HashRouter>

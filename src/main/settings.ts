@@ -68,7 +68,9 @@ export const settings = {
   /** Real-time interview assistant: auto-answer detected interviewer questions */
   interviewAssistantEnabled: false,
   /** Global left-button click capture mode */
-  clickCaptureMode: 'off' as ClickCaptureMode
+  clickCaptureMode: 'off' as ClickCaptureMode,
+  /** Auto-update from GitHub Releases (Windows; silent install on quit) */
+  autoUpdateEnabled: true
 }
 
 export type AppSettings = typeof settings
