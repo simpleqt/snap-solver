@@ -17,7 +17,6 @@ export function TransparentBar() {
       <button
         className="flex items-center gap-0.5 text-[11px] leading-none text-white/80 hover:text-white cursor-pointer"
         style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
-        title="退出透明模式，恢复标题栏与设置入口"
         onClick={() => updateSetting('transparentAnswerMode', false)}
       >
         <X className="h-3 w-3" />
